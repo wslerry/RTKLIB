@@ -198,7 +198,7 @@ static void buildvel(char *payload, struct erb_vel velocity, const uint32_t time
     velocity.velE = 100 * vel[0];
     velocity.velD = 100 * -vel[2];
     velocity.speed = 100 * SQRT(vel[0] * vel[0] + vel[1] * vel[1]);
-    velocity.heading = atan2(vel[1],vel[0]) * R2D * 1e5;
+    velocity.heading = atan2(vel[0],vel[1]) * R2D * 1e5; /* North = 0deg */
     velocity.accS = 0x00;
     memcpy(payload, &velocity, LENGTH_VEL);
 }
