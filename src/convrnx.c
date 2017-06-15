@@ -987,8 +987,8 @@ static void setapppos(strfile_t *str, rnxopt_t *opt)
     prcopt.navsys=opt->navsys;
     
     /* point positioning with last obs data */
-    if (!pntpos(str->obs->data,str->obs->n,str->nav,&prcopt,&sol,NULL,NULL,
-                msg)) {
+    if (!pntpos(str->obs->data,str->obs->n,str->nav,NULL,&prcopt,&sol,
+                NULL,NULL,msg)) {
         trace(2,"point position error (%s)\n",msg);
         return;
     }

@@ -88,15 +88,15 @@ EXPORT opt_t sysopts[]={
     {"pos2-armode",     3,  (void *)&prcopt_.modear,     ARMOPT },
     {"pos2-gloarmode",  3,  (void *)&prcopt_.glomodear,  GAROPT },
     {"pos2-bdsarmode",  3,  (void *)&prcopt_.bdsmodear,  SWTOPT },
-	{"pos2-arfilter",   3,  (void *)&prcopt_.arfilter,   SWTOPT },
+    {"pos2-arfilter",   3,  (void *)&prcopt_.arfilter,   SWTOPT },
     {"pos2-arthres",    1,  (void *)&prcopt_.thresar[0], ""     },
     {"pos2-arthres1",   1,  (void *)&prcopt_.thresar[1], ""     },
     {"pos2-arthres2",   1,  (void *)&prcopt_.thresar[2], ""     },
     {"pos2-arthres3",   1,  (void *)&prcopt_.thresar[3], ""     },
     {"pos2-arthres4",   1,  (void *)&prcopt_.thresar[4], ""     },
     {"pos2-arlockcnt",  0,  (void *)&prcopt_.minlock,    ""     },
-	{"pos2-minfixsats", 0,  (void *)&prcopt_.minfixsats, ""     },
-	{"pos2-minholdsats",0,  (void *)&prcopt_.minholdsats,""     },
+    {"pos2-minfixsats", 0,  (void *)&prcopt_.minfixsats, ""     },
+    {"pos2-minholdsats",0,  (void *)&prcopt_.minholdsats,""     },
     {"pos2-arelmask",   1,  (void *)&elmaskar_,          "deg"  },
     {"pos2-arminfix",   0,  (void *)&prcopt_.minfix,     ""     },
     {"pos2-armaxiter",  0,  (void *)&prcopt_.armaxiter,  ""     },
@@ -110,6 +110,10 @@ EXPORT opt_t sysopts[]={
     {"pos2-niter",      0,  (void *)&prcopt_.niter,      ""     },
     {"pos2-baselen",    1,  (void *)&prcopt_.baseline[0],"m"    },
     {"pos2-basesig",    1,  (void *)&prcopt_.baseline[1],"m"    },
+    
+    {"smooth-mode",     3,  (void *)&prcopt_.smoothing_mode,SWTOPT},
+    {"smooth-window",   1,  (void *)&prcopt_.smoothing_window,"s"},
+    {"smooth-varratio", 1,  (void *)&prcopt_.smoothing_varratio,""},
     
     {"out-solformat",   3,  (void *)&solopt_.posf,       SOLOPT },
     {"out-outhead",     3,  (void *)&solopt_.outhead,    SWTOPT },
@@ -127,7 +131,7 @@ EXPORT opt_t sysopts[]={
     {"out-nmeaintv1",   1,  (void *)&solopt_.nmeaintv[0],"s"    },
     {"out-nmeaintv2",   1,  (void *)&solopt_.nmeaintv[1],"s"    },
     {"out-outstat",     3,  (void *)&solopt_.sstat,      STSOPT },
-    
+
     {"stats-eratio1",   1,  (void *)&prcopt_.eratio[0],  ""     },
     {"stats-eratio2",   1,  (void *)&prcopt_.eratio[1],  ""     },
     {"stats-errphase",  1,  (void *)&prcopt_.err[1],     "m"    },
