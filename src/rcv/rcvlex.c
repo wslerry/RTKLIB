@@ -13,10 +13,11 @@
 * history : 2011/05/27 1.0 new
 *           2013/06/02 1.1 fix bug on unable compile
 *           2014/10/26 1.2 suppress warning on type-punning pointer
+*           2017/04/11 1.3 (char *) -> (signed char *)
 *-----------------------------------------------------------------------------*/
 #include "rtklib.h"
 
-#ifdef EXTLEX /* lex extention */
+#ifdef EXTLEX /* lex extension */
 
 #define LEXFRMPREAMB 0x1ACFFC1Du /* lex message frame preamble */
 
@@ -32,7 +33,7 @@ static const char rcsid[]="$Id:$";
 
 /* extract field (big-endian) ------------------------------------------------*/
 #define U1(p)       (*((unsigned char *)(p)))
-#define I1(p)       (*((char *)(p)))
+#define I1(p)       (*((signed char *)(p)))
 
 static unsigned short U2(unsigned char *p)
 {

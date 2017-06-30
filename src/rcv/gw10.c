@@ -10,6 +10,7 @@
 * history : 2011/05/27  1.0  new
 *           2011/07/01  1.1  suppress warning
 *           2012/02/14  1.2  add decode of gps message (0x02)
+*           2017/04/11  1.3  (char *) -> (singed char *)
 *-----------------------------------------------------------------------------*/
 #include "rtklib.h"
 
@@ -47,7 +48,7 @@ static const char rcsid[]="$Id:$";
 
 /* extract field (big-endian) ------------------------------------------------*/
 #define U1(p)       (*((unsigned char *)(p)))
-#define I1(p)       (*((char *)(p)))
+#define I1(p)       (*((signed char *)(p)))
 
 static unsigned short U2(unsigned char *p)
 {
@@ -131,7 +132,7 @@ static int decode_gw10raw(raw_t *raw)
     tows=floor(tow*1000.0+0.5)/1000.0; /* round by 10ms */
     toff=CLIGHT*(tows-tow);            /* time tag offset (m) */
     if (!adjweek(raw,tows)) {
-        trace(2,"decode_gw10raw: no gps week infomation\n");
+        trace(2,"decode_gw10raw: no gps week information\n");
         return 0;
     }
     for (i=n=0,p+=8;i<16&&n<MAXOBS;i++,p+=23) {
@@ -300,7 +301,7 @@ static int decode_gw10reph(raw_t *raw)
         trace(2,"gw10 raw ephemeris navigation frame error: prn=%d\n",prn);
         return -1;
     }
-    /* set time if no time avaliable */
+    /* set time if no time available */
     if (raw->time.time==0) {
         tow=getbitu(buff,24,17)*6.0;
         week=getbitu(buff,48,10)+OFFWEEK;

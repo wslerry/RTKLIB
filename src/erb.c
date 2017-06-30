@@ -180,8 +180,8 @@ static void builddops(char *payload, struct erb_dops dops, const uint32_t time,
     dops.timeGPS = time;
     dops.dopGeo = 100 * sol->dop[0];
     dops.dopPos = 100 * sol->dop[1];
-    dops.dopVer = 100 * sol->dop[2];
-    dops.dopHor = 100 * sol->dop[3];
+    dops.dopHor = 100 * sol->dop[2];
+    dops.dopVer = 100 * sol->dop[3];
     memcpy(payload, &dops, LENGTH_DOPS);
 }
 /* build ERB-VEL message -----------------------------------------------------*/
@@ -256,8 +256,9 @@ extern int outerb(unsigned char *buff, const sol_t *sol)
 
     trace(3,"outerb:\n");
 
+    /* convert GPS time of week (double) into milliseconds */
     time = sol->time;
-    gpst = time2gpst(time, &week);
+    gpst = time2gpst(time, &week) * 1000;
 
 
     /*-------------- ERB-VER -----------------------*/

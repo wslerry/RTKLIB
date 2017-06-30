@@ -22,6 +22,7 @@
 *           2014/05/13 1.7 support bin65 and bin66
 *                          add receiver option -TTCORR
 *           2014/06/21 1.8 move decode_glostr() to rcvraw.c
+*           2017/04/11 1.9 (char *) -> (signed char *)
 *-----------------------------------------------------------------------------*/
 #include "rtklib.h"
 
@@ -43,7 +44,7 @@ static const char rcsid[]="$Id: crescent.c,v 1.2 2008/07/14 00:05:05 TTAKA Exp $
 
 /* get fields (little-endian) ------------------------------------------------*/
 #define U1(p) (*((unsigned char *)(p)))
-#define I1(p) (*((char *)(p)))
+#define I1(p) (*((signed char *)(p)))
 static unsigned short U2(unsigned char *p) {unsigned short u; memcpy(&u,p,2); return u;}
 static unsigned int   U4(unsigned char *p) {unsigned int   u; memcpy(&u,p,4); return u;}
 static short          I2(unsigned char *p) {short          i; memcpy(&i,p,2); return i;}
@@ -63,7 +64,7 @@ static int chksum(const unsigned char *buff, int len)
     return (sum>>8)==buff[len-3]&&(sum&0xFF)==buff[len-4]&&
            buff[len-2]==0x0D&&buff[len-1]==0x0A;
 }
-/* decode bin 1 postion/velocity ---------------------------------------------*/
+/* decode bin 1 position/velocity ---------------------------------------------*/
 static int decode_crespos(raw_t *raw)
 {
     int ns,week,mode;

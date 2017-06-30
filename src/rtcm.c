@@ -282,40 +282,57 @@ extern int input_rtcm3(rtcm_t *rtcm, unsigned char data)
     return decode_rtcm3(rtcm);
 }
 /* input rtcm 2 message from file ----------------------------------------------
-* fetch next rtcm 2 message and input a messsage from file
+* fetch next rtcm 2 message and input a message from file
 * args   : rtcm_t *rtcm IO   rtcm control struct
 *          FILE  *fp    I    file pointer
 * return : status (-2: end of file, -1...10: same as above)
 * notes  : same as above
 *-----------------------------------------------------------------------------*/
-extern int input_rtcm2f(rtcm_t *rtcm, FILE *fp)
+extern int input_rtcm2f(rtcm_t *rtcm, FILE *fp, stream_t *stream)
 {
-    int i,data=0,ret;
+    int i,byte_data=0,ret,bytes;
+    unsigned char data, buff[1];
     
-    trace(4,"input_rtcm2f: data=%02x\n",data);
+    trace(4,"input_rtcm2f: data=%02x\n",byte_data);
     
     for (i=0;i<4096;i++) {
-        if ((data=fgetc(fp))==EOF) return -2;
-        if ((ret=input_rtcm2(rtcm,(unsigned char)data))) return ret;
+        if (!stream->port) {
+            if ((byte_data=fgetc(fp))==EOF) return -2;
+            data = (unsigned char)byte_data;
+        } else {
+            bytes = strread(stream, buff, 1);
+            if (bytes <= 0) return -2;
+            data = buff[0];
+        }
+        if ((ret=input_rtcm2(rtcm,data))) return ret;
     }
     return 0; /* return at every 4k bytes */
 }
 /* input rtcm 3 message from file ----------------------------------------------
-* fetch next rtcm 3 message and input a messsage from file
+* fetch next rtcm 3 message and input a message from file
 * args   : rtcm_t *rtcm IO   rtcm control struct
 *          FILE  *fp    I    file pointer
 * return : status (-2: end of file, -1...10: same as above)
 * notes  : same as above
 *-----------------------------------------------------------------------------*/
-extern int input_rtcm3f(rtcm_t *rtcm, FILE *fp)
+extern int input_rtcm3f(rtcm_t *rtcm, FILE *fp, stream_t *stream)
 {
-    int i,data=0,ret;
+    int i,byte_data=0,ret,bytes;
+    unsigned char data, buff[1];
     
-    trace(4,"input_rtcm3f: data=%02x\n",data);
+    trace(4,"input_rtcm3f: data=%02x\n",byte_data);
     
     for (i=0;i<4096;i++) {
-        if ((data=fgetc(fp))==EOF) return -2;
-        if ((ret=input_rtcm3(rtcm,(unsigned char)data))) return ret;
+        if (stream && stream->port) {
+            bytes = strread(stream, buff, 1);
+            if (bytes <= 0) return -2;
+            data = buff[0];
+        } else {
+            if ((byte_data=fgetc(fp))==EOF) return -2;
+            data = (unsigned char)byte_data;
+        }
+
+        if ((ret=input_rtcm3(rtcm,data))) return ret;
     }
     return 0; /* return at every 4k bytes */
 }

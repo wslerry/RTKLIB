@@ -23,6 +23,7 @@
 *                           raw->strfmt -> raw->format
 *                           int free_rt17() -> void free_rt17()
 *           2016/07/29 1.4  suppress warning
+*           2017/04/11 1.5  (char *) -> (signed char *)
 *-----------------------------------------------------------------------------*/
 
 /*
@@ -282,7 +283,7 @@
 #define M_WEEK_SCAN   M_BIT3    /* WEEK=n option already looked for, no need to do it again */
 
 /* Data conversion macros: */
-#define I1(p) (*((char*)(p)))           /* One byte signed integer */
+#define I1(p) (*((signed char*)(p)))    /* One byte signed integer */
 #define U1(p) (*((unsigned char*)(p)))  /* One byte unsigned integer */
 #define I2(p) ReadI2(p)                 /* Two byte signed integer */
 #define U2(p) ReadU2(p)                 /* Two byte unsigned integer */
@@ -1220,7 +1221,7 @@ static int DecodeGSOF(raw_t *Raw)
     char *RecordType_s = NULL;
  
    /*
-    | Reassemble origional message by removing packet headers,
+    | Reassemble original message by removing packet headers,
     | trailers and page framing.
     */
     UnwrapGenout(rt17);
@@ -1568,7 +1569,7 @@ static int DecodeRawdata(raw_t *Raw)
     tracet(3, "RT17: Trimble packet type=0x57 (RAWDATA), Recordtype=%d (%s), Length=%d.\n", RecordType, RecordType_s, rt17->MessageLength);
       
     /*
-    | Reassemble origional message by removing packet headers,
+    | Reassemble original message by removing packet headers,
     | trailers and page framing.
     */
     UnwrapRawdata(rt17, &rif);

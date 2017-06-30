@@ -33,6 +33,7 @@
 *           2016/01/23 1.11 enable septentrio
 *           2016/01/28 1.12 add decode_gal_inav() for galileo I/NAV
 *           2016/07/04 1.13 support CMR/CMR+
+*           2017/05/26 1.14 support TERSUS
 *-----------------------------------------------------------------------------*/
 #include "rtklib.h"
 #include <stdint.h>
@@ -108,7 +109,7 @@ extern int decode_gal_inav(const unsigned char *buff, eph_t *eph)
     i=0; /* word type 0 */
     type[0]    =getbitu(buff,i, 6);              i+= 6;
     time_f     =getbitu(buff,i, 2);              i+= 2+88;
-    week       =getbitu(buff,i,12);              i+=12;
+    week       =getbitu(buff,i,12);              i+=12; /* gst-week */
     tow        =getbitu(buff,i,20);
     
     i=128; /* word type 1 */
@@ -448,7 +449,7 @@ extern int test_glostr(const unsigned char *buff)
 *                                  buff[30-39]: string #4
 *          geph_t *geph  IO     glonass ephemeris message
 * return : status (1:ok,0:error)
-* notes  : geph->tof should be set to frame time witin 1/2 day before calling
+* notes  : geph->tof should be set to frame time within 1/2 day before calling
 *          geph->frq is set to 0
 *-----------------------------------------------------------------------------*/
 extern int decode_glostr(const unsigned char *buff, geph_t *geph)
@@ -998,6 +999,7 @@ extern int input_raw(raw_t *raw, int format, unsigned char data)
         case STRFMT_RT17 : return input_rt17 (raw,data);
         case STRFMT_SEPT : return input_sbf  (raw,data);
         case STRFMT_CMR  : return input_cmr  (raw,data);
+        case STRFMT_TERSUS: return input_tersus(raw,data);
         case STRFMT_LEXR : return input_lexr (raw,data);
     }
     return 0;
@@ -1009,14 +1011,14 @@ extern int input_raw(raw_t *raw, int format, unsigned char data)
 *          FILE   *fp    I      file pointer
 * return : status(-2: end of file/format error, -1...31: same as above)
 *-----------------------------------------------------------------------------*/
-extern int input_rawf(raw_t *raw, int format, FILE *fp)
+extern int input_rawf(raw_t *raw, int format, FILE *fp, stream_t *stream)
 {
     trace(4,"input_rawf: format=%d\n",format);
     
     switch (format) {
         case STRFMT_OEM4 : return input_oem4f (raw,fp);
         case STRFMT_OEM3 : return input_oem3f (raw,fp);
-        case STRFMT_UBX  : return input_ubxf  (raw,fp);
+        case STRFMT_UBX  : return input_ubxf  (raw,fp,stream);
         case STRFMT_SS2  : return input_ss2f  (raw,fp);
         case STRFMT_CRES : return input_cresf (raw,fp);
         case STRFMT_STQ  : return input_stqf  (raw,fp);
@@ -1027,6 +1029,7 @@ extern int input_rawf(raw_t *raw, int format, FILE *fp)
         case STRFMT_RT17 : return input_rt17f (raw,fp);
         case STRFMT_SEPT : return input_sbff  (raw,fp);
         case STRFMT_CMR  : return input_cmrf  (raw,fp);
+        case STRFMT_TERSUS: return input_tersusf(raw,fp);
         case STRFMT_LEXR : return input_lexrf (raw,fp);
     }
     return -2;

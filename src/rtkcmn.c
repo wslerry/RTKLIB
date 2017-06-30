@@ -45,7 +45,7 @@
 *                          add gdop mask for pntpos()
 *                          change constant MAXDTOE value
 *           2007/05/25 1.3 add function execcmd(),expandpath()
-*           2008/06/21 1.4 add funciton sortobs(),uniqeph(),screent()
+*           2008/06/21 1.4 add function sortobs(),uniqeph(),screent()
 *                          replace geodist() by sagnac correction way
 *           2008/10/29 1.5 fix bug of ionosphereic mapping function
 *                          fix bug of seasonal variation term of tropmapf
@@ -125,6 +125,7 @@
 *           2016/09/05 1.40 fix bug on invalid nav data read in readnav()
 *           2016/09/17 1.41 suppress warnings
 *           2016/09/19 1.42 modify api deg2dms() to consider numerical error
+*           2017/04/11 1.43 delete EXPORT for global variables
 *-----------------------------------------------------------------------------*/
 #define _POSIX_C_SOURCE 199506
 #include <stdarg.h>
@@ -170,7 +171,7 @@ static double leaps[MAXLEAPS+1][7]={ /* leap seconds (y,m,d,h,m,s,utc-gpst) */
     {1981,7,1,0,0,0, -1},
     {0}
 };
-EXPORT const double chisqr[100]={      /* chi-sqr(n) (alpha=0.001) */
+const double chisqr[100]={      /* chi-sqr(n) (alpha=0.001) */
     10.8,13.8,16.3,18.5,20.5,22.5,24.3,26.1,27.9,29.6,
     31.3,32.9,34.5,36.1,37.7,39.3,40.8,42.3,43.8,45.3,
     46.8,48.3,49.7,51.2,52.6,54.1,55.5,56.9,58.3,59.7,
@@ -182,16 +183,16 @@ EXPORT const double chisqr[100]={      /* chi-sqr(n) (alpha=0.001) */
     126 ,127 ,128 ,129 ,131 ,132 ,133 ,134 ,135 ,137 ,
     138 ,139 ,140 ,142 ,143 ,144 ,145 ,147 ,148 ,149
 };
-EXPORT const double lam_carr[MAXFREQ]={ /* carrier wave length (m) */
+const double lam_carr[MAXFREQ]={ /* carrier wave length (m) */
     CLIGHT/FREQ1,CLIGHT/FREQ2,CLIGHT/FREQ5,CLIGHT/FREQ6,CLIGHT/FREQ7,
     CLIGHT/FREQ8,CLIGHT/FREQ9
 };
-EXPORT const prcopt_t prcopt_default={ /* defaults processing options */
+const prcopt_t prcopt_default={ /* defaults processing options */
     PMODE_SINGLE,0,2,SYS_GPS,   /* mode,soltype,nf,navsys */
     15.0*D2R,{{0,0}},           /* elmin,snrmask */
     0,1,1,1,1,0,                /* sateph,modear,glomodear,gpsmodear,bdsmodear,arfilter */
-    5,0,2,2,10,1,                   /* maxout,minlock,minfixsats,minfix,armaxiter */
-    0,0,0,0,                    /* estion,esttrop,dynamics,tidecorr */
+    5,0,2,2,20,10,              /* maxout,minlock,minfixsats,minholdsats,mindropsats,minfix */
+    0,1,0,0,0,0,                /* rcvstds,armaxiter,estion,esttrop,dynamics,tidecorr */
     1,0,0,0,0,                  /* niter,codesmooth,intpref,sbascorr,sbassatsel */
     0,0,                        /* rovpos,refpos */
     {100.0,100.0},              /* eratio[] */
@@ -200,20 +201,20 @@ EXPORT const prcopt_t prcopt_default={ /* defaults processing options */
     {1E-4,1E-3,1E-4,1E-1,1E-2,0.0}, /* prn[] */
     5E-12,                      /* sclkstab */
     {3.0,0.9999,0.25,0.1,0.05}, /* thresar */
-    0.0,0.0,0.05,               /* elmaskar,almaskhold,thresslip */
+    0.0,0.0,0.05,.001,.01,      /* elmaskar,elmaskhold,thresslip,varholdamb,gainholdamb */
     30.0,30.0,30.0,             /* maxtdif,maxinno,maxgdop */
     {0},{0},{0},                /* baseline,ru,rb */
     {"",""},                    /* anttype */
     {{0}},{{0}},{0}             /* antdel,pcv,exsats */
 };
-EXPORT const solopt_t solopt_default={ /* defaults solution output options */
+const solopt_t solopt_default={ /* defaults solution output options */
     SOLF_LLH,TIMES_GPST,1,3,    /* posf,times,timef,timeu */
     0,1,0,0,0,0,                /* degf,outhead,outopt,datum,height,geoid */
     0,0,0,                      /* solstatic,sstat,trace */
     {0.0,0.0},                  /* nmeaintv */
     " ",""                      /* separator/program name */
 };
-EXPORT const char *formatstrs[32]={    /* stream format strings */
+const char *formatstrs[32]={    /* stream format strings */
     "RTCM 2",                   /*  0 */
     "RTCM 3",                   /*  1 */
     "NovAtel OEM6",             /*  2 */
@@ -229,12 +230,13 @@ EXPORT const char *formatstrs[32]={    /* stream format strings */
     "Trimble RT17",             /* 12 */
     "Septentrio",               /* 13 */
     "CMR/CMR+",                 /* 14 */
-    "LEX Receiver",             /* 15 */
-    "RINEX",                    /* 16 */
-    "SP3",                      /* 17 */
-    "RINEX CLK",                /* 18 */
-    "SBAS",                     /* 19 */
-    "NMEA 0183",                /* 20 */
+    "TERSUS",                   /* 15 */
+    "LEX Receiver",             /* 16 */
+    "RINEX",                    /* 17 */
+    "SP3",                      /* 18 */
+    "RINEX CLK",                /* 19 */
+    "SBAS",                     /* 20 */
+    "NMEA 0183",                /* 21 */
     NULL
 };
 static char *obscodes[]={       /* observation code strings */
@@ -336,6 +338,14 @@ static const unsigned int tbl_CRC24Q[]={
     0x87B4A6,0x01F85D,0x0D61AB,0x8B2D50,0x145247,0x921EBC,0x9E874A,0x18CBB1,
     0xE37B16,0x6537ED,0x69AE1B,0xEFE2E0,0x709DF7,0xF6D10C,0xFA48FA,0x7C0401,
     0x42FA2F,0xC4B6D4,0xC82F22,0x4E63D9,0xD11CCE,0x575035,0x5BC9C3,0xDD8538
+};
+const double ura_value[]={              /* ura max values */
+    2.4,3.4,4.85,6.85,9.65,13.65,24.0,48.0,96.0,192.0,384.0,768.0,1536.0,
+    3072.0,6144.0
+};
+static const double ura_nominal[]={     /* ura nominal values */
+    2.0,2.8,4.0,5.7,8.0,11.3,16.0,32.0,64.0,128.0,256.0,512.0,1024.0,
+    2048.0,4096.0,8192.0
 };
 /* function prototypes -------------------------------------------------------*/
 #ifdef MKL
@@ -1738,7 +1748,7 @@ extern double dms2deg(const double *dms)
     double sign=dms[0]<0.0?-1.0:1.0;
     return sign*(fabs(dms[0])+dms[1]/60.0+dms[2]/3600.0);
 }
-/* transform ecef to geodetic postion ------------------------------------------
+/* transform ecef to geodetic position ------------------------------------------
 * transform ecef position to geodetic position
 * args   : double *r        I   ecef position {x,y,z} (m)
 *          double *pos      O   geodetic position {lat,lon,h} (rad,m)
@@ -2062,7 +2072,7 @@ extern void eci2ecef(gtime_t tutc, const double *erpv, double *U, double *gmst)
     matmul("NN",3,3,3,1.0,R1,R2,0.0,R);
     matmul("NN",3,3,3,1.0,R ,R3,0.0,N); /* N=Rx(-eps)*Rz(-dspi)*Rx(eps) */
     
-    /* greenwich aparent sidereal time (rad) */
+    /* greenwich apparent sidereal time (rad) */
     gmst_=utc2gmst(tutc_,erpv[2]);
     gast=gmst_+dpsi*cos(eps);
     gast+=(0.00264*sin(f[4])+0.000063*sin(2.0*f[4]))*AS2R;
@@ -2609,6 +2619,41 @@ static void uniqseph(nav_t *nav)
     nav->nsmax=nav->ns;
     
     trace(4,"uniqseph: ns=%d\n",nav->ns);
+}
+/* ura index to ura nominal value (m) ----------------------------------------*/
+extern double uravalue(int ura, int sys)
+{
+    if (sys==SYS_GAL) {
+        if (ura>0 && ura<50)
+            return ura/100.0;
+        else if (ura>=50 && ura<75)
+            return (50.0+2.0*(ura-50.0))/100.0;
+        else if (ura>=75 && ura<100)
+            return (100.0+4.0*(ura-75.0))/100.0;
+        else if (ura>=100 && ura<=125)
+            return (200.0+16.0*(ura-100.0))/100.0;
+        else
+            return 6.0;
+    } else
+        return 0<=ura&&ura<15?ura_nominal[ura]:8192.0;
+}
+extern int uraindex(double value, int sys)
+{
+    int i;
+
+    if (sys==SYS_GAL) {
+        if (value>0 && value<0.5)
+            i=(int)(value*100+0.5);
+        else if (value>=0.5 && value<1.0)
+            i=50+(int)((value-0.5)/2*100+0.5);
+        else if (value>=1.0 && value<2.0)
+            i=75+(int)((value-1.0)/4*100);
+        else if (value>=2.0 && value<6.0)
+            i=100+(int)((value-2.0)/16*100+0.5);
+        else i=125;
+    } else
+        for (i=0;i<15;i++) if (ura_value[i]>=value) break;
+    return i;
 }
 /* unique ephemerides ----------------------------------------------------------
 * unique ephemerides in navigation data and update carrier wave length
@@ -3763,7 +3808,7 @@ extern void sunmoonpos(gtime_t tutc, const double *erpv, double *rsun,
     /* eci to ecef transformation matrix */
     eci2ecef(tutc,erpv,U,&gmst_);
     
-    /* sun and moon postion in ecef */
+    /* sun and moon position in ecef */
     if (rsun ) matmul("NN",3,1,3,1.0,U,rs,0.0,rsun );
     if (rmoon) matmul("NN",3,1,3,1.0,U,rm,0.0,rmoon);
     if (gmst ) *gmst=gmst_;
@@ -3881,7 +3926,7 @@ extern void settspan(gtime_t ts, gtime_t te) {}
 extern void settime(gtime_t time) {}
 #endif
 
-/* dummy functions for lex extentions ----------------------------------------*/
+/* dummy functions for lex extensions ----------------------------------------*/
 #ifndef EXTLEX
 extern int input_lexr(raw_t *raw, unsigned char data) {return 0;}
 extern int input_lexrf(raw_t *raw, FILE *fp) {return 0;}

@@ -32,9 +32,11 @@
 *           2016/06/09 1.14 fix bug on output file with -v 3.02
 *           2016/07/01 1.15 support log format CMR/CMR+
 *           2016/07/31 1.16 add option -halfc
+*           2017/05/26  1.17 add input format tersus
 *-----------------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <string.h>
 #include <stdarg.h>
 #include "rtklib.h"
@@ -43,6 +45,17 @@ static const char rcsid[]="$Id: convbin.c,v 1.1 2008/07/17 22:13:04 ttaka Exp $"
 
 #define PRGNAME   "CONVBIN"
 #define TRACEFILE "convbin.trace"
+
+static int timeout      =0;         /* no timeout */
+static int reconnect    =0;         /* not reconnect interval */
+static int intflg       =0;
+
+/* external stop signal ------------------------------------------------------*/
+static void sigshut(int sig)
+{
+    trace(3, "sigshut: sig=%d\n", sig);
+    intflg = 1;
+}
 
 /* help text -----------------------------------------------------------------*/
 static const char *help[]={
@@ -76,6 +89,8 @@ static const char *help[]={
 " Trimble               : RT17",
 " Septentrio            : SBF",
 " CMR                   : CMR Type 0, 1, 2, 3, 4, CMR+ Type 1, 2, 3",
+" TERSUS                : RANGECMPB, RANGEB, GPSEPHEMB, GLOEPHEMERISB,",
+"                         BDSEPHEMERISB",
 " RINEX                 : OBS, NAV, GNAV, HNAV, LNAV, QNAV",
 "",
 " Options [default]",
@@ -101,6 +116,7 @@ static const char *help[]={
 "                  rt17 = Trimble RT17",
 "                  sbf  = Septentrio SBF",
 "                  cmr  = CMR/CMR+",
+"                  tersus= TERSUS",
 "                  rinex= RINEX",
 "     -ro opt      receiver options",
 "     -f freq      number of frequencies [2]",
@@ -135,6 +151,9 @@ static const char *help[]={
 "     -l lfile     output RINEX LNAV file",
 "     -s sfile     output SBAS message file",
 "     -trace level output trace level [off]",
+"     -path path   inet host:port",
+"                  default input stream is file if no path",
+"                  use file as name for output files",
 "",
 " If any output file specified, default output files (<file>.obs,",
 " <file>.nav, <file>.gnav, <file>.hnav, <file>.qnav, <file>.lnav and",
@@ -154,8 +173,10 @@ static const char *help[]={
 "     *.rt17        Trimble RT17",
 "     *.sbf         Septentrio SBF",
 "     *.cmr         CMR/CMR+",
+"     *.trs         TERSUS",
 "     *.obs,*.*o    RINEX OBS"
 };
+
 /* print help ----------------------------------------------------------------*/
 static void printhelp(void)
 {
@@ -173,16 +194,16 @@ extern int showmsg(char *format, ...)
 }
 /* convert main --------------------------------------------------------------*/
 static int convbin(int format, rnxopt_t *opt, const char *ifile, char **file,
-                   char *dir)
+                   char *dir, int *intflg, stream_t *stream)
 {
     int i,def;
-    char work[1024],ofile_[7][1024]={"","","","","","",""},*ofile[7],*p;
+    char work[1024],ofile_[9][1024]={"","","","","","","","",""},*ofile[9],*p;
     char *extnav=opt->rnxver<=2.99||opt->navsys==SYS_GPS?"N":"P";
     char *extlog=format==STRFMT_LEXR?"lex":"sbs";
     
-    def=!file[0]&&!file[1]&&!file[2]&&!file[3]&&!file[4]&&!file[5]&&!file[6];
+    def=!file[0]&&!file[1]&&!file[2]&&!file[3]&&!file[4]&&!file[5]&&!file[6]&&!file[7]&&!file[8];
     
-    for (i=0;i<7;i++) ofile[i]=ofile_[i];
+    for (i=0;i<9;i++) ofile[i]=ofile_[i];
     
     if (file[0]) strcpy(ofile[0],file[0]);
     else if (*opt->staid) {
@@ -237,20 +258,38 @@ static int convbin(int format, rnxopt_t *opt, const char *ifile, char **file,
     else if (opt->rnxver<=2.99&&def) {
         strcpy(ofile[5],ifile);
         if ((p=strrchr(ofile[5],'.'))) strcpy(p,".lnav");
-        else strcat(ofile[5],".qnav");
+        else strcat(ofile[5],".lnav");
     }
     if (file[6]) strcpy(ofile[6],file[6]);
+    else if (opt->rnxver<=2.99&&*opt->staid) {
+        strcpy(ofile[6],"%r%n0.%yC");
+    }
+    else if (opt->rnxver<=2.99&&def) {
+        strcpy(ofile[6],ifile);
+        if ((p=strrchr(ofile[6],'.'))) strcpy(p,".cnav");
+        else strcat(ofile[6],".cnav");
+    }
+    if (file[7]) strcpy(ofile[7],file[7]);
+    else if (opt->rnxver<=2.99&&*opt->staid) {
+        strcpy(ofile[7],"%r%n0.%yI");
+    }
+    else if (opt->rnxver<=2.99&&def) {
+        strcpy(ofile[7],ifile);
+        if ((p=strrchr(ofile[7],'.'))) strcpy(p,".inav");
+        else strcat(ofile[5],".inav");
+    }
+    if (file[8]) strcpy(ofile[8],file[8]);
     else if (*opt->staid) {
-        strcpy(ofile[6],"%r%n0_%y.");
-        strcat(ofile[6],extlog);
+        strcpy(ofile[8],"%r%n0_%y.");
+        strcat(ofile[8],extlog);
     }
     else if (def) {
-        strcpy(ofile[6],ifile);
-        if ((p=strrchr(ofile[6],'.'))) strcpy(p,".");
-        else strcat(ofile[6],".");
-        strcat(ofile[6],extlog);
+        strcpy(ofile[8],ifile);
+        if ((p=strrchr(ofile[8],'.'))) strcpy(p,".");
+        else strcat(ofile[8],".");
+        strcat(ofile[8],extlog);
     }
-    for (i=0;i<7;i++) {
+    for (i=0;i<9;i++) {
         if (!*dir||!*ofile[i]) continue;
         if ((p=strrchr(ofile[i],FILEPATHSEP))) strcpy(work,p+1);
         else strcpy(work,ofile[i]);
@@ -264,9 +303,11 @@ static int convbin(int format, rnxopt_t *opt, const char *ifile, char **file,
     if (*ofile[3]) fprintf(stderr,"->rinex hnav: %s\n",ofile[3]);
     if (*ofile[4]) fprintf(stderr,"->rinex qnav: %s\n",ofile[4]);
     if (*ofile[5]) fprintf(stderr,"->rinex lnav: %s\n",ofile[5]);
-    if (*ofile[6]) fprintf(stderr,"->sbas log  : %s\n",ofile[6]);
+    if (*ofile[6]) fprintf(stderr,"->rinex cnav: %s\n",ofile[6]);
+    if (*ofile[7]) fprintf(stderr,"->rinex inav: %s\n",ofile[7]);
+    if (*ofile[8]) fprintf(stderr,"->sbas log  : %s\n",ofile[8]);
     
-    if (!convrnx(format,opt,ifile,ofile)) {
+    if (!convrnx(format,opt,ifile,ofile,intflg,stream)) {
         fprintf(stderr,"\n");
         return -1;
     }
@@ -297,7 +338,7 @@ static void setmask(const char *argv, rnxopt_t *opt, int mask)
 }
 /* parse command line options ------------------------------------------------*/
 static int cmdopts(int argc, char **argv, rnxopt_t *opt, char **ifile,
-                   char **ofile, char **dir, int *trace)
+                   char **ofile, char **dir, int *trace, char **_path)
 {
     double eps[]={1980,1,1,0,0,0},epe[]={2037,12,31,0,0,0};
     double epr[]={2010,1,1,0,0,0},span=0.0;
@@ -434,12 +475,14 @@ static int cmdopts(int argc, char **argv, rnxopt_t *opt, char **ifile,
         else if (!strcmp(argv[i],"-h" )&&i+1<argc) ofile[3]=argv[++i];
         else if (!strcmp(argv[i],"-q" )&&i+1<argc) ofile[4]=argv[++i];
         else if (!strcmp(argv[i],"-l" )&&i+1<argc) ofile[5]=argv[++i];
-        else if (!strcmp(argv[i],"-s" )&&i+1<argc) ofile[6]=argv[++i];
+        else if (!strcmp(argv[i],"-s" )&&i+1<argc) ofile[8]=argv[++i];
         else if (!strcmp(argv[i],"-trace" )&&i+1<argc) {
             *trace=atoi(argv[++i]);
         }
+        else if (!strcmp(argv[i],"-path") && i+1<argc)
+            *_path = argv[++i];
         else if (!strncmp(argv[i],"-",1)) printhelp();
-        
+
         else *ifile=argv[i];
     }
     if (span>0.0&&opt->ts.time) {
@@ -468,6 +511,7 @@ static int cmdopts(int argc, char **argv, rnxopt_t *opt, char **ifile,
         else if (!strcmp(fmt,"rt17" )) format=STRFMT_RT17;
         else if (!strcmp(fmt,"sbf"  )) format=STRFMT_SEPT;
         else if (!strcmp(fmt,"cmr"  )) format=STRFMT_CMR;
+        else if (!strcmp(fmt,"tersus")) format=STRFMT_TERSUS;
         else if (!strcmp(fmt,"rinex")) format=STRFMT_RINEX;
     }
     else {
@@ -486,22 +530,44 @@ static int cmdopts(int argc, char **argv, rnxopt_t *opt, char **ifile,
         else if (!strcmp(p,".rt17" ))  format=STRFMT_RT17;
         else if (!strcmp(p,".sbf"  ))  format=STRFMT_SEPT;
         else if (!strcmp(p,".cmr"  ))  format=STRFMT_CMR;
+        else if (!strcmp(p,".trs"  ))  format=STRFMT_TERSUS;
         else if (!strcmp(p,".obs"  ))  format=STRFMT_RINEX;
         else if (!strcmp(p+3,"o"   ))  format=STRFMT_RINEX;
         else if (!strcmp(p+3,"O"   ))  format=STRFMT_RINEX;
     }
     return format;
 }
+
+/* hack to build streams */
+extern int outnmea_gga(unsigned char *buff, const sol_t *sol)
+{
+    return 0;
+}
+
 /* main ----------------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
     rnxopt_t opt={{0}};
-    int format,trace=0,stat;
-    char *ifile="",*ofile[7]={0},*dir="";
-    
+    int format,trace=0,stat=1;
+    char *ifile="",*ofile[9]={0},*dir="",*path=NULL;
+    stream_t stream;
+
     /* parse command line options */
-    format=cmdopts(argc,argv,&opt,&ifile,ofile,&dir,&trace);
-    
+    format=cmdopts(argc,argv,&opt,&ifile,ofile,&dir,&trace,&path);
+
+    if (path) {
+        switch (format) {
+            case STRFMT_UBX: break;
+            case STRFMT_RTCM2: break;
+            case STRFMT_RTCM3: break;
+            default: {
+                fprintf(stderr,
+                        "inet input stream is only available for {ubx,rtcm2,rtcm3}\n");
+                return -1;
+            }
+        }
+    }
+
     if (!*ifile) {
         fprintf(stderr,"no input file\n");
         return -1;
@@ -510,6 +576,17 @@ int main(int argc, char **argv)
         fprintf(stderr,"input format can not be recognized\n");
         return -1;
     }
+
+    strinit(&stream);
+
+    if (path) {
+        if(!stropen(&stream,STR_TCPCLI,STR_MODE_R, path)) {
+            fprintf(stderr, "unable to open stream");
+            return -1;
+        }
+        strsettimeout(&stream,timeout,reconnect);
+    }
+
     sprintf(opt.prog,"%s %s",PRGNAME,VER_RTKLIB);
     sprintf(opt.comment[0],"log: %-55.55s",ifile);
     sprintf(opt.comment[1],"format: %s",formatstrs[format]);
@@ -521,9 +598,14 @@ int main(int argc, char **argv)
         traceopen(TRACEFILE);
         tracelevel(trace);
     }
-    stat=convbin(format,&opt,ifile,ofile,dir);
-    
+
+    signal(SIGINT, sigshut); /* keyboard interrupt */
+    signal(SIGTERM, sigshut); /* external shutdown signal */
+    signal(SIGUSR2, sigshut);
+
+    stat=convbin(format,&opt,ifile,ofile,dir,&intflg,&stream);
+
+    strclose(&stream);
     traceclose();
-    
     return stat;
 }

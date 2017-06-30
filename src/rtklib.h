@@ -58,10 +58,10 @@ extern "C" {
 
 #define VER_RTKLIB  "2.4.3 Emlid"             /* library version */
 
-#define PATCH_LEVEL "b26"               /* patch level */
+#define PATCH_LEVEL "b28"               /* patch level */
 
 #define COPYRIGHT_RTKLIB \
-            "Copyright (C) 2007-2016 T.Takasu\nAll rights reserved."
+            "Copyright (C) 2007-2017 T.Takasu\nAll rights reserved."
 
 #define PI          3.1415926535897932  /* pi */
 #define D2R         (PI/180.0)          /* deg to rad */
@@ -245,9 +245,10 @@ extern "C" {
 #define MAXCOMMENT  10                  /* max number of RINEX comments */
 #define MAXSTRPATH  1024                /* max length of stream path */
 #define MAXSTRMSG   1024                /* max length of stream message */
-#define MAXSTRRTK   8                   /* max number of stream in RTK server */
+#define MAXSTRRTK   10                  /* max number of stream in RTK server */
 #define MAXSBSMSG   32                  /* max number of SBAS msg in RTK server */
 #define MAXSOLMSG   8191                /* max length of solution message */
+#define MAXSOLRTK   4                   /* max number of solution streams in RTK server */
 #define MAXRAWLEN   4096                /* max length of receiver raw message */
 #define MAXERRMSG   4096                /* max length of error/warning message */
 #define MAXANT      64                  /* max length of station name/antenna type */
@@ -257,6 +258,10 @@ extern "C" {
 #define MAXLEAPS    64                  /* max number of leap seconds table */
 #define MAXGISLAYER 32                  /* max number of GIS data layers */
 #define MAXRCVCMD   4096                /* max length of receiver commands */
+
+#define SOLUTIONSTROFFSET 3
+#define LOGSTROFFSET 7
+#define MONITORSTRN 10                   /* the number of MONITOR stream */
 
 #define RNX2VER     2.10                /* RINEX ver.2 default output version */
 #define RNX3VER     3.00                /* RINEX ver.3 default output version */
@@ -398,6 +403,11 @@ extern "C" {
 #define ARMODE_WLNL 4                   /* AR mode: wide lane/narrow lane */
 #define ARMODE_TCAR 5                   /* AR mode: triple carrier ar */
 
+#define GLO_ARMODE_OFF  0               /* GLO AR mode: off */
+#define GLO_ARMODE_ON 1                 /* GLO AR mode: on */
+#define GLO_ARMODE_AUTOCAL 2            /* GLO AR mode: autocal */
+#define GLO_ARMODE_FIXHOLD 3            /* GLO AR mode: fix and hold */
+
 #define SBSOPT_LCORR 1                  /* SBAS option: long term correction */
 #define SBSOPT_FCORR 2                  /* SBAS option: fast correction */
 #define SBSOPT_ICORR 4                  /* SBAS option: ionosphere correction */
@@ -440,16 +450,17 @@ extern "C" {
 #define STRFMT_RT17  12                 /* stream format: Trimble RT17 */
 #define STRFMT_SEPT  13                 /* stream format: Septentrio */
 #define STRFMT_CMR   14                 /* stream format: CMR/CMR+ */
-#define STRFMT_LEXR  15                 /* stream format: Furuno LPY-10000 */
-#define STRFMT_RINEX 16                 /* stream format: RINEX */
-#define STRFMT_SP3   17                 /* stream format: SP3 */
-#define STRFMT_RNXCLK 18                /* stream format: RINEX CLK */
-#define STRFMT_SBAS  19                 /* stream format: SBAS messages */
-#define STRFMT_NMEA  20                 /* stream format: NMEA 0183 */
+#define STRFMT_TERSUS 15                /* stream format: TERSUS */
+#define STRFMT_LEXR  16                 /* stream format: Furuno LPY-10000 */
+#define STRFMT_RINEX 17                 /* stream format: RINEX */
+#define STRFMT_SP3   18                 /* stream format: SP3 */
+#define STRFMT_RNXCLK 19                /* stream format: RINEX CLK */
+#define STRFMT_SBAS  20                 /* stream format: SBAS messages */
+#define STRFMT_NMEA  21                 /* stream format: NMEA 0183 */
 #ifndef EXTLEX
-#define MAXRCVFMT    14                 /* max number of receiver format */
+#define MAXRCVFMT    15                 /* max number of receiver format */
 #else
-#define MAXRCVFMT    15
+#define MAXRCVFMT    16
 #endif
 
 #define STR_MODE_R  0x1                 /* stream mode: read */
@@ -470,6 +481,8 @@ extern "C" {
 #define DLOPT_KEEPCMP 0x02              /* download option: keep compressed file */
 #define DLOPT_HOLDERR 0x04              /* download option: hold on error file */
 #define DLOPT_HOLDLST 0x08              /* download option: hold on listing file */
+
+#define IMUFMT_KVH  1                   /* imu data format KVH */
 
 #define P2_5        0.03125             /* 2^-5 */
 #define P2_6        0.015625            /* 2^-6 */
@@ -514,10 +527,17 @@ extern "C" {
 
 /* type definitions ----------------------------------------------------------*/
 
+#ifdef WIN32
 typedef struct {        /* time struct */
     time_t time;        /* time (s) expressed by standard time_t */
     double sec;         /* fraction of second under 1 s */
 } gtime_t;
+#else
+typedef struct {        /* time struct */
+    time_t time;        /* time (s) expressed by standard time_t */
+    __attribute__ ((aligned (8)))double sec; /* fraction of second under 1 s */
+} gtime_t;
+#endif /*WIN32*/
 
 typedef struct {        /* observation data record */
     gtime_t time;       /* receiver sampling time (GPST) */
@@ -1054,6 +1074,8 @@ typedef struct {        /* processing options type */
     int minlock;        /* min lock count to fix ambiguity */
     int minfixsats;     /* min sats to fix integer ambiguities */
     int minholdsats;    /* min sats to hold integer ambiguities */
+    int mindropsats;    /* min sats to drop sats in AR */
+    int rcvstds;        /* use stdev estimates from receiver to adjust measurement variances */
     int minfix;         /* min fix count to hold ambiguity */
     int armaxiter;      /* max iteration to resolve ambiguity */
     int ionoopt;        /* ionosphere option (IONOOPT_???) */
@@ -1081,6 +1103,8 @@ typedef struct {        /* processing options type */
     double elmaskar;    /* elevation mask of AR for rising satellite (deg) */
     double elmaskhold;  /* elevation mask to hold ambiguity (deg) */
     double thresslip;   /* slip threshold of geometry-free phase (m) */
+    double varholdamb;  /* variance for fix-and-hold psuedo measurements (cycle^2) */
+    double gainholdamb; /* gain used for GLO and SBAS sats to adjust ambiguity */
     double maxtdiff;    /* max difference of time (sec) */
     double maxinno;     /* reject threshold of innovation (m) */
     double maxgdop;     /* reject threshold of gdop */
@@ -1168,6 +1192,7 @@ typedef struct {        /* RINEX options type */
     int outleaps;       /* output leap seconds */
     int autopos;        /* auto approx position */
     int halfcyc;        /* half cycle correction */
+    int sep_nav;        /* separated nav files */
     gtime_t tstart;     /* first obs time */
     gtime_t tend;       /* last obs time */
     gtime_t trtcm;      /* approx log start time for rtcm */
@@ -1216,6 +1241,7 @@ typedef struct {        /* RTK control/result type */
     double *x, *P;      /* float states and their covariance */
     double *xa,*Pa;     /* fixed states and their covariance */
     int nfix;           /* number of continuous fixes of ambiguity */
+    int excsat;         /* index of next satellite to be excluded for partial ambiguity resolution */
 	double com_bias;    /* phase bias common between all sats (used to be distributed to all sats */
     char holdamb;       /* set if fix-and-hold has occurred at least once */
     ambc_t ambc[MAXSAT]; /* ambiguity control */
@@ -1223,6 +1249,7 @@ typedef struct {        /* RTK control/result type */
     int neb;            /* bytes in error message buffer */
     char errbuf[MAXERRMSG]; /* error message buffer */
     prcopt_t opt;       /* processing options */
+    int initial_mode;   /* initial positioning mode */
 } rtk_t;
 
 typedef struct half_cyc_tag {  /* half-cycle correction list type */
@@ -1251,7 +1278,7 @@ typedef struct {        /* receiver raw data control type */
     double prCA[MAXSAT],dpCA[MAXSAT]; /* L1/CA pseudrange/doppler for javad */
     unsigned char halfc[MAXSAT][NFREQ+NEXOBS]; /* half-cycle add flag */
     char freqn[MAXOBS]; /* frequency number for javad */
-    int nbyte;          /* number of bytes in message buffer */ 
+    int nbyte;          /* number of bytes in message buffer */
     int len;            /* message length (bytes) */
     int iod;            /* issue of data */
     int tod;            /* time of day (ms) */
@@ -1261,7 +1288,6 @@ typedef struct {        /* receiver raw data control type */
     unsigned char buff[MAXRAWLEN]; /* message buffer */
     char opt[256];      /* receiver dependent options */
     half_cyc_t *half_cyc; /* half-cycle correction list */
-    
     int format;         /* receiver stream format */
     void *rcv_data;     /* receiver dependent data */
 } raw_t;
@@ -1289,7 +1315,7 @@ typedef struct {        /* stream converter type */
     double tint[32];    /* output message intervals (s) */
     unsigned int tick[32]; /* cycle tick of output message */
     gtime_t time_last_msg[32]; /* center of time interval containing
-                                  last message recieved for each message type */
+                                  last message received for each message type */
     int ephsat[32];     /* satellites of output ephemeris */
     int stasel;         /* station info selection (0:remote,1:local) */
     rtcm_t rtcm;        /* rtcm input data buffer */
@@ -1324,16 +1350,16 @@ typedef struct {        /* RTK server type */
     double nmeapos[3];  /* NMEA request position (ecef) (m) */
     int buffsize;       /* input buffer size (bytes) */
     int format[3];      /* input format {rov,base,corr} */
-    solopt_t solopt[2]; /* output solution options {sol1,sol2} */
+    solopt_t solopt[MAXSOLRTK]; /* output solution options {sol1,sol2} */
     int navsel;         /* ephemeris select (0:all,1:rover,2:base,3:corr) */
     int nsbs;           /* number of sbas message */
     int nsol;           /* number of solution buffer */
     rtk_t rtk;          /* RTK control/result struct */
     int nb [3];         /* bytes in input buffers {rov,base} */
-    int nsb[2];         /* bytes in soulution buffers */
+    int nsb[MAXSOLRTK];         /* bytes in soulution buffers */
     int npb[3];         /* bytes in input peek buffers */
     unsigned char *buff[3]; /* input buffers {rov,base,corr} */
-    unsigned char *sbuf[2]; /* output buffers {sol1,sol2} */
+    unsigned char *sbuf[MAXSOLRTK]; /* output buffers {sol1,sol2} */
     unsigned char *pbuf[3]; /* peek buffers {rov,base,corr} */
     sol_t solbuf[MAXSOLBUF]; /* solution buffer */
     unsigned int nmsg[3][10]; /* input message counts */
@@ -1344,7 +1370,7 @@ typedef struct {        /* RTK server type */
     obs_t obs[3][MAXOBSBUF]; /* observation data {rov,base,corr} */
     nav_t nav;          /* navigation data */
     sbsmsg_t sbsmsg[MAXSBSMSG]; /* SBAS message buffer */
-    stream_t stream[8]; /* streams {rov,base,corr,sol1,sol2,logr,logb,logc} */
+    stream_t stream[MAXSTRRTK]; /* streams {rov,base,corr,sol1,sol2,logr,logb,logc} */
     stream_t *moni;     /* monitor stream */
     unsigned int tick;  /* start tick */
     thread_t thread;    /* server thread */
@@ -1353,6 +1379,8 @@ typedef struct {        /* RTK server type */
     int nave;           /* number of averaging base pos */
     double rb_ave[3];   /* averaging base pos */
     char cmds_periodic[3][MAXRCVCMD]; /* periodic commands */
+    char cmd_reset[MAXRCVCMD]; /* reset command */
+    double bl_reset;    /* baseline length to reset (km) */
     lock_t lock;        /* lock flag */
 } rtksvr_t;
 
@@ -1385,11 +1413,27 @@ typedef struct {        /* gis type */
     double bound[4];    /* boundary {lat0,lat1,lon0,lon1} */
 } gis_t;
 
+typedef struct {        /* imu data type */
+    gtime_t time;       /* time */
+    int stat;           /* status */
+    int seqno;          /* sequence number */
+    float temp;         /* temperature (C) */
+    double rot[3];      /* rotation rate {x,y,z} (rad/s) */
+    double acc[3];      /* acceleration data {x,y,z} (m/s^2) */
+} imud_t;
+
+typedef struct {        /* imu type */
+    imud_t data;        /* imu data */
+    int nbyte;          /* bytes in imu data buffer */
+    unsigned char buff[256]; /* imu data buffer */
+} imu_t;
+
 typedef void fatalfunc_t(const char *); /* fatal callback function type */
 
 /* global variables ----------------------------------------------------------*/
 extern const double chisqr[];        /* chi-sqr(n) table (alpha=0.001) */
 extern const double lam_carr[];      /* carrier wave length (m) {L1,L2,...} */
+extern const double ura_value[];     /* user range accuracy translation table */
 extern const prcopt_t prcopt_default; /* default positioning options */
 extern const solopt_t solopt_default; /* default solution output options */
 extern const sbsigpband_t igpband1[9][8]; /* SBAS IGP band 0-8 */
@@ -1581,11 +1625,13 @@ EXPORT int outrnxhnavh(FILE *fp, const rnxopt_t *opt, const nav_t *nav);
 EXPORT int outrnxlnavh(FILE *fp, const rnxopt_t *opt, const nav_t *nav);
 EXPORT int outrnxqnavh(FILE *fp, const rnxopt_t *opt, const nav_t *nav);
 EXPORT int outrnxcnavh(FILE *fp, const rnxopt_t *opt, const nav_t *nav);
+EXPORT int outrnxinavh(FILE *fp, const rnxopt_t *opt, const nav_t *nav);
 EXPORT int outrnxnavb (FILE *fp, const rnxopt_t *opt, const eph_t *eph);
 EXPORT int outrnxgnavb(FILE *fp, const rnxopt_t *opt, const geph_t *geph);
 EXPORT int outrnxhnavb(FILE *fp, const rnxopt_t *opt, const seph_t *seph);
 EXPORT int rtk_uncompress(const char *file, char *uncfile);
-EXPORT int convrnx(int format, rnxopt_t *opt, const char *file, char **ofile);
+EXPORT int convrnx(int format, rnxopt_t *opt, const char *file, char **ofile,
+                   int *intflg, stream_t *stream);
 EXPORT int  init_rnxctr (rnxctr_t *rnx);
 EXPORT void free_rnxctr (rnxctr_t *rnx);
 EXPORT int  open_rnxctr (rnxctr_t *rnx, FILE *fp);
@@ -1595,6 +1641,8 @@ EXPORT int  input_rnxctr(rnxctr_t *rnx, FILE *fp);
 EXPORT double eph2clk (gtime_t time, const eph_t  *eph);
 EXPORT double geph2clk(gtime_t time, const geph_t *geph);
 EXPORT double seph2clk(gtime_t time, const seph_t *seph);
+EXPORT double uravalue(int ura, int sys);
+EXPORT int uraindex(double value, int sys);
 EXPORT void eph2pos (gtime_t time, const eph_t  *eph,  double *rs, double *dts,
                      double *var);
 EXPORT void geph2pos(gtime_t time, const geph_t *geph, double *rs, double *dts,
@@ -1642,7 +1690,7 @@ EXPORT int decode_gal_inav(const unsigned char *buff, eph_t *eph);
 EXPORT int init_raw   (raw_t *raw, int format);
 EXPORT void free_raw  (raw_t *raw);
 EXPORT int input_raw  (raw_t *raw, int format, unsigned char data);
-EXPORT int input_rawf (raw_t *raw, int format, FILE *fp);
+EXPORT int input_rawf (raw_t *raw, int format, FILE *fp, stream_t *stream);
 
 EXPORT int init_rt17  (raw_t *raw);
 EXPORT int init_cmr   (raw_t *raw);
@@ -1663,10 +1711,11 @@ EXPORT int input_bnx   (raw_t *raw, unsigned char data);
 EXPORT int input_rt17  (raw_t *raw, unsigned char data);
 EXPORT int input_sbf   (raw_t *raw, unsigned char data);
 EXPORT int input_cmr   (raw_t *raw, unsigned char data);
+EXPORT int input_tersus(raw_t *raw, unsigned char data);
 EXPORT int input_lexr  (raw_t *raw, unsigned char data);
 EXPORT int input_oem4f (raw_t *raw, FILE *fp);
 EXPORT int input_oem3f (raw_t *raw, FILE *fp);
-EXPORT int input_ubxf  (raw_t *raw, FILE *fp);
+EXPORT int input_ubxf  (raw_t *raw, FILE *fp, stream_t *stream);
 EXPORT int input_ss2f  (raw_t *raw, FILE *fp);
 EXPORT int input_cresf (raw_t *raw, FILE *fp);
 EXPORT int input_stqf  (raw_t *raw, FILE *fp);
@@ -1677,6 +1726,7 @@ EXPORT int input_bnxf  (raw_t *raw, FILE *fp);
 EXPORT int input_rt17f (raw_t *raw, FILE *fp);
 EXPORT int input_sbff  (raw_t *raw, FILE *fp);
 EXPORT int input_cmrf  (raw_t *raw, FILE *fp);
+EXPORT int input_tersusf(raw_t *raw, FILE *fp);
 EXPORT int input_lexrf (raw_t *raw, FILE *fp);
 
 EXPORT int gen_ubx (const char *msg, unsigned char *buff);
@@ -1689,8 +1739,8 @@ EXPORT int init_rtcm   (rtcm_t *rtcm);
 EXPORT void free_rtcm  (rtcm_t *rtcm);
 EXPORT int input_rtcm2 (rtcm_t *rtcm, unsigned char data);
 EXPORT int input_rtcm3 (rtcm_t *rtcm, unsigned char data);
-EXPORT int input_rtcm2f(rtcm_t *rtcm, FILE *fp);
-EXPORT int input_rtcm3f(rtcm_t *rtcm, FILE *fp);
+EXPORT int input_rtcm2f(rtcm_t *rtcm, FILE *fp, stream_t *stream);
+EXPORT int input_rtcm3f(rtcm_t *rtcm, FILE *fp, stream_t *stream);
 EXPORT int gen_rtcm2   (rtcm_t *rtcm, int type, int sync);
 EXPORT int gen_rtcm3   (rtcm_t *rtcm, int type, int sync);
 
@@ -1878,6 +1928,10 @@ EXPORT void dl_test(gtime_t ts, gtime_t te, double ti, const url_t *urls,
 /* gis data functions --------------------------------------------------------*/
 EXPORT int gis_read(const char *file, gis_t *gis, int layer);
 EXPORT void gis_free(gis_t *gis);
+
+/* imu functions -------------------------------------------------------------*/
+EXPORT int init_imu(imu_t *imu);
+EXPORT int input_imu(imu_t *imu, int format, unsigned char byte);
 
 /* qzss lex functions --------------------------------------------------------*/
 EXPORT int lexupdatecorr(const lexmsg_t *msg, nav_t *nav, gtime_t *tof);
