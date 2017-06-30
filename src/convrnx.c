@@ -64,7 +64,7 @@ static const int navsys[]={     /* system codes */
     SYS_GPS,SYS_GLO,SYS_GAL,SYS_QZS,SYS_SBS,SYS_CMP,SYS_IRN,0
 };
 
-gtime_t time_last_msg = {0.0};  /* last time of message for interval conversion */
+static gtime_t time_last_msg = {0.0};  /* last time of message for interval conversion */
 /* convert rinex obs type ver.3 -> ver.2 -------------------------------------*/
 static void convcode(double ver, int sys, char *type)
 {
@@ -931,7 +931,10 @@ static void convobs(FILE **ofp, rnxopt_t *opt, strfile_t *str, int *staid,
     /* save slips */
     saveslips(slips,str->obs->data,str->obs->n);
     
-    if (!screent(time,opt->ts,opt->te,0.0) || !is_tint(time, opt->ts, opt->te, opt->tint)) 
+    if (screent(time, opt->ts, opt->te, 0.0) == 0) 
+        return;
+
+    if (is_tint(time, opt->ts, opt->te, opt->tint) == 0) 
     	return;
     
     /* restore slips */
