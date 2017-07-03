@@ -60,7 +60,7 @@ typedef struct {                /* stream file type */
 
 /* global variables ----------------------------------------------------------*/
 static const int navsys[]={     /* system codes */
-    SYS_GPS,SYS_GLO,SYS_GAL,SYS_QZS,SYS_SBS,SYS_CMP,SYS_IRN,0
+    SYS_GPS,SYS_GLO,SYS_GAL,SYS_QZS,SYS_SBS,SYS_CMP,SYS_IRN,0,0
 };
 /* convert rinex obs type ver.3 -> ver.2 -------------------------------------*/
 static void convcode(double ver, int sys, char *type)

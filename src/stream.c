@@ -63,7 +63,6 @@
 #include "rtklib.h"
 #ifndef WIN32
 #include <fcntl.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #define __USE_MISC
