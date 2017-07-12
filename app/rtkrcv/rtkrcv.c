@@ -642,7 +642,6 @@ static void prstatus(vt_t *vt)
          "single","DGPS","kinematic","static","static-start","moving-base","fixed",
          "PPP-kinema","PPP-static"
     };
-    const char *freq[]={"-","L1","L1+L2","L1+L2+L5","","",""};
     gtime_t eventime={0};
     rtcm_t rtcm[3];
     int i,j,n,thread,cycle,state,rtkstat,nsat0,nsat1,prcout,rcvcount,tmcount,timevalid,nave;

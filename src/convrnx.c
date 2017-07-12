@@ -37,6 +37,7 @@ static const char rcsid[]="$Id:$";
 #define NOUTFILE        9       /* number of output files */
 #define TSTARTMARGIN    60.0    /* time margin for file name replacement */
 #define STR_DELAY       25.0    /* ms */
+#define TINT_MIN_VALUE   1e-3	/* min value for time interval */
 
 /* type definition -----------------------------------------------------------*/
 
@@ -60,8 +61,10 @@ typedef struct {                /* stream file type */
 
 /* global variables ----------------------------------------------------------*/
 static const int navsys[]={     /* system codes */
-    SYS_GPS,SYS_GLO,SYS_GAL,SYS_QZS,SYS_SBS,SYS_CMP,SYS_IRN,0
+    SYS_GPS,SYS_GLO,SYS_GAL,SYS_QZS,SYS_SBS,SYS_CMP,SYS_IRN,0,0
 };
+
+static gtime_t time_last_msg = {0.0};  /* last time of message for interval conversion */
 /* convert rinex obs type ver.3 -> ver.2 -------------------------------------*/
 static void convcode(double ver, int sys, char *type)
 {
@@ -873,6 +876,46 @@ static void outrnxevent(FILE *fp, rnxopt_t *opt, int staid, stas_t *stas)
     fprintf(fp,"%14.4f%14.4f%14.4f%-18s%-20s\n",del[0],del[1],del[2],"",
             "ANTENNA: DELTA H/E/N");
 }
+/* gtime to seconds ----------------------------------------------------------*/
+static double gtime2sec(gtime_t time)
+{
+    return (double)time.time + time.sec;
+}
+/* seconds to gtime ----------------------------------------------------------*/
+static gtime_t sec2gtime(double time_sec)
+{
+    gtime_t time;
+    
+    time.time = (time_t)time_sec;
+    time.sec  = time_sec - (double)time.time;
+    
+    return time;
+}
+/* test time interval --------------------------------------------------------*/
+static int is_tint(gtime_t time, gtime_t ts, gtime_t te, double tint) {
+
+    double time_last_msg_sec   = gtime2sec(time_last_msg);
+    double time_sec            = gtime2sec(time);    
+
+    if (tint <= TINT_MIN_VALUE) return 1;
+
+    if (time_sec >= (time_last_msg_sec + 0.5 * tint)) {
+
+        if (time_sec - time_last_msg_sec > 1.5 * tint)
+
+            time_last_msg_sec = tint * ((long)(time_sec / tint + 0.5));  
+
+        else
+            time_last_msg_sec += tint;
+
+        time_last_msg = sec2gtime(time_last_msg_sec); 
+            
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
 /* convert obs message -------------------------------------------------------*/
 static void convobs(FILE **ofp, rnxopt_t *opt, strfile_t *str, int *staid,
                     stas_t *stas, int *n, unsigned char slips[][NFREQ+NEXOBS])
@@ -888,7 +931,11 @@ static void convobs(FILE **ofp, rnxopt_t *opt, strfile_t *str, int *staid,
     /* save slips */
     saveslips(slips,str->obs->data,str->obs->n);
     
-    if (!screent(time,opt->ts,opt->te,opt->tint)) return;
+    if (screent(time, opt->ts, opt->te, 0.0) == 0) 
+        return;
+
+    if (is_tint(time, opt->ts, opt->te, opt->tint) == 0) 
+    	return;
     
     /* restore slips */
     restslips(slips,str->obs->data,str->obs->n);

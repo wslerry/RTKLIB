@@ -29,12 +29,18 @@
 *           2013/03/28 1.10 rtklib ver.2.4.2
 *           2016/01/26 1.11 rtklib ver.2.4.3
 *-----------------------------------------------------------------------------*/
+#if __STDC_VERSION__ >= 199901L
+#define _XOPEN_SOURCE 600
+#else
+#define _XOPEN_SOURCE 500
+#endif /* __STDC_VERSION__ */
 #ifndef RTKLIB_H
 #define RTKLIB_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <unistd.h>
 #include <math.h>
 #include <time.h>
 #include <ctype.h>
@@ -1776,6 +1782,9 @@ EXPORT int outnmea_gga(unsigned char *buff, const sol_t *sol);
 EXPORT int outnmea_gsa(unsigned char *buff, const sol_t *sol,
                        const ssat_t *ssat);
 EXPORT int outnmea_gsv(unsigned char *buff, const sol_t *sol,
+                       const ssat_t *ssat);
+extern int outnmea_vtg(unsigned char *buff, const sol_t *sol);
+extern int outnmea_gst(unsigned char *buff, const sol_t *sol,
                        const ssat_t *ssat);
 EXPORT int outerb(unsigned char *buff, const sol_t *sol);
 
