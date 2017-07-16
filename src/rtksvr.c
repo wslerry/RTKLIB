@@ -313,7 +313,11 @@ static int decoderaw(rtksvr_t *svr, int index)
     nav_t *nav;
     sbsmsg_t *sbsmsg=NULL;
     int i,ret,sat,fobs=0;
-
+    int is_base_obs=0;
+    int is_base_outdated=0;
+    double maxage=svr->rtk.opt.maxtdiff;
+    gtime_t time_sol=svr->rtk.sol.time;
+    
     tracet(4,"decoderaw: index=%d\n",index);
 
     rtksvrlock(svr);
@@ -349,6 +353,13 @@ static int decoderaw(rtksvr_t *svr, int index)
         /* update cmr rover observations cache */
         if (svr->format[1]==STRFMT_CMR&&index==0&&ret==1) {
             update_cmr(&svr->raw[1],svr,obs);
+        }
+        /* skip outdated base observations */
+        is_base_obs=(ret==1)&&(index==1);
+        if (is_base_obs) {
+            is_base_outdated=(maxage>0.0)&&(time_sol.time>0)&&
+                             (timediff(time_sol,obs->data[0].time)>maxage);
+            if (is_base_outdated) obs->n=0;
         }
         /* update rtk server */
         if (ret>0) updatesvr(svr,ret,obs,nav,sat,sbsmsg,index,fobs);
