@@ -664,7 +664,7 @@ static void *rtksvrthread(void *arg)
         free_raw (svr->raw +i);
         free_rtcm(svr->rtcm+i);
     }
-    for (i=0;i<2;i++) {
+    for (i=0;i<MAXSOLRTK;i++) {
         svr->nsb[i]=0;
         free(svr->sbuf[i]); svr->sbuf[i]=NULL;
     }
@@ -1115,7 +1115,7 @@ extern int rtksvrmark(rtksvr_t *svr, const char *name, const char *comment)
     tow=time2gpst(svr->rtk.sol.time,&week);
     ecef2pos(svr->rtk.sol.rr,pos);
 
-    for (i=0;i<2;i++) {
+    for (i=0;i<MAXSOLRTK;i++) {
         p=buff;
         if (svr->solopt[i].posf==SOLF_STAT) {
             p+=sprintf(p,"$MARK,%d,%.3f,%d,%.4f,%.4f,%.4f,%s,%s\n",week,tow,
