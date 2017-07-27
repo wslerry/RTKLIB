@@ -306,6 +306,15 @@ static void updatesvr(rtksvr_t *svr, int ret, obs_t *obs, nav_t *nav, int sat,
         svr->nmsg[index][9]++;
     }
 }
+static int is_data_outdated(gtime_t time_data, gtime_t time_sol, double maxage)
+{
+    if (maxage <= 0.0)      return 0;
+    if (time_sol.time <= 0) return 0;
+    
+    if ( timediff(time_sol, time_data) > maxage ) return 1;
+    
+    return 0;
+}
 /* decode receiver raw/rtcm data ---------------------------------------------*/
 static int decoderaw(rtksvr_t *svr, int index)
 {
@@ -317,6 +326,7 @@ static int decoderaw(rtksvr_t *svr, int index)
     int is_base_outdated=0;
     double maxage=svr->rtk.opt.maxtdiff;
     gtime_t time_sol=svr->rtk.sol.time;
+    gtime_t time_base;
     
     tracet(4,"decoderaw: index=%d\n",index);
 
@@ -355,11 +365,11 @@ static int decoderaw(rtksvr_t *svr, int index)
             update_cmr(&svr->raw[1],svr,obs);
         }
         /* skip outdated base observations */
-        is_base_obs=(ret==1)&&(index==1);
-        if (is_base_obs) {
-            is_base_outdated=(maxage>0.0)&&(time_sol.time>0)&&
-                             (timediff(time_sol,obs->data[0].time)>maxage);
-            if (is_base_outdated) obs->n=0;
+        is_base_obs = (ret == 1) && (index == 1);
+        if ( is_base_obs ) {
+            time_base = obs->data[0].time;
+            is_base_outdated = is_data_outdated(time_base, time_sol, maxage);
+            if ( is_base_outdated ) obs->n = 0;
         }
         /* update rtk server */
         if (ret>0) updatesvr(svr,ret,obs,nav,sat,sbsmsg,index,fobs);
