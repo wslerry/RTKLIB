@@ -812,7 +812,8 @@ static int avepos(double *ra, int rcv, const obs_t *obs, const nav_t *nav,
         }
         if (j<=0||!screent(data[0].time,ts,ts,1.0)) continue; /* only 1 hz */
         
-        if (!pntpos(data,j,nav,opt,&sol,NULL,NULL,msg)) continue;
+        /* todo: code smoothing */
+        if (!pntpos(data,j,nav,NULL,opt,&sol,NULL,NULL,msg)) continue;
         
         for (i=0;i<3;i++) ra[i]+=sol.rr[i];
         n++;
@@ -1148,7 +1149,7 @@ static int execses(gtime_t ts, gtime_t te, double ti, const prcopt_t *popt,
 
     iobsu=iobsr=isbs=ilex=revs=aborts=0;
     
-    if (popt_.mode==PMODE_SINGLE||popt_.soltype==0) {
+    if (popt_.soltype==0) {
         if ((fp=openfile(outfile)) && (fptm=openfile(outfiletm))) {
             procpos(fp,fptm,&popt_,sopt,&rtk,0); /* forward */
             fclose(fp);
