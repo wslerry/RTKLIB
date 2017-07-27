@@ -594,7 +594,8 @@ static void *rtksvrthread(void *arg)
         /* averaging single base pos */
         if (fobs[1]>0&&svr->rtk.opt.refpos==POSOPT_SINGLE) {
             if ((svr->rtk.opt.maxaveep<=0||svr->nave<svr->rtk.opt.maxaveep)&&
-                pntpos(svr->obs[1][0].data,svr->obs[1][0].n,&svr->nav,
+                /* todo: code smoothing */
+                pntpos(svr->obs[1][0].data,svr->obs[1][0].n,&svr->nav,NULL,
                        &svr->rtk.opt,&sol,NULL,NULL,msg)) {
                 svr->nave++;
                 for (i=0;i<3;i++) {
