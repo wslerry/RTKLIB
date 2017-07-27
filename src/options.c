@@ -523,11 +523,16 @@ extern void resetsysopts(void)
 *-----------------------------------------------------------------------------*/
 extern void getsysopts(prcopt_t *popt, solopt_t *sopt, filopt_t *fopt)
 {
+    int i;
+
     trace(3,"getsysopts:\n");
     
     buff2sysopts();
     if (popt) *popt=prcopt_;
-    if (sopt) *sopt=solopt_;
+    if (sopt) {
+        for (i = 0; i < MAXSOLRTK; i++)
+            sopt[i]=solopt_;
+    }
     if (fopt) *fopt=filopt_;
 }
 /* set system options ----------------------------------------------------------
