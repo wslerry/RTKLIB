@@ -2169,6 +2169,7 @@ static udp_t *genudp(int type, int port, const char *saddr, char *msg)
     
     if ((udp->sock=socket(AF_INET,SOCK_DGRAM,0))==(socket_t)-1) {
         sprintf(msg,"socket error (%d)",errsock());
+        free(udp);
         return NULL;
     }
     if (setsockopt(udp->sock,SOL_SOCKET,SO_RCVBUF,(const char *)&bs,sizeof(bs))==-1||
