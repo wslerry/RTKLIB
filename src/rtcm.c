@@ -55,8 +55,10 @@ extern int encode_rtcm3(rtcm_t *rtcm, int type, int sync);
 
 /* constants -----------------------------------------------------------------*/
 
-#define RTCM2PREAMB 0x66        /* rtcm ver.2 frame preamble */
-#define RTCM3PREAMB 0xD3        /* rtcm ver.3 frame preamble */
+#define RTCM2PREAMB    0x66        /* rtcm ver.2 frame preamble */
+#define RTCM3PREAMB    0xD3        /* rtcm ver.3 frame preamble */
+#define RTCM3LENSYNC   0x00        /* rtcm ver.3 frame six zero bits before length */
+#define LENSYNCOFFSET  2
 
 /* initialize rtcm control -----------------------------------------------------
 * initialize rtcm control struct and reallocate memory for observation and
@@ -257,25 +259,57 @@ extern int input_rtcm2(rtcm_t *rtcm, unsigned char data)
 *-----------------------------------------------------------------------------*/
 extern int input_rtcm3(rtcm_t *rtcm, unsigned char data)
 {
-    trace(5,"input_rtcm3: data=%02x\n",data);
+    unsigned char len_sync = 0;
+    trace(5, "input_rtcm3: data=%02x\n", data);
     
     /* synchronize frame */
-    if (rtcm->nbyte==0) {
-        if (data!=RTCM3PREAMB) return 0;
-        rtcm->buff[rtcm->nbyte++]=data;
+    if (rtcm->nbyte == 0) {
+
+        if (data != RTCM3PREAMB)
+            return 0;
+
+        rtcm->buff[rtcm->nbyte++] = data;
+        trace(5, "rtcm3 message synced\n");
         return 0;
     }
-    rtcm->buff[rtcm->nbyte++]=data;
-    
-    if (rtcm->nbyte==3) {
-        rtcm->len=getbitu(rtcm->buff,14,10)+3; /* length without parity */
+
+    /* synchronize length */
+    if (rtcm->nbyte == 1) {
+        len_sync = data >> LENSYNCOFFSET;
+        trace(5, "rtcm3 parsing LENSYNC, data == %d, len_sync == %d\n", data, len_sync);
+        if (len_sync != RTCM3LENSYNC) {
+            /* if there is no lensync or another preamble after preamble reset parsing */
+            trace(2, "rtcm3 error parsing LENSYNC, data == %d, len_sync == %d\n", data, len_sync);
+
+            if (data != RTCM3PREAMB) {
+                trace(4, "rtcm3 data is not preamble, resetting\n");
+                rtcm->nbyte = 0;
+            }
+            trace(4, "rtcm3 found preamble in len sync place!\n");
+            /* if this byte is a new preamble, nbyte stays the same
+            and this condition is checked again on the next run */
+            return 0;
+        }
+        trace(5, "rtcm3 message length synced\n");
+        /* everything ok, continue parsing */
     }
-    if (rtcm->nbyte<3||rtcm->nbyte<rtcm->len+3) return 0;
-    rtcm->nbyte=0;
+
+    rtcm->buff[rtcm->nbyte++] = data;
+    
+    if (rtcm->nbyte == 3) {
+        rtcm->len = getbitu(rtcm->buff, 14, 10) + 3; /* length without parity */
+    }
+
+    /* wait for the message to end */
+    if ((rtcm->nbyte < 3) || (rtcm->nbyte < rtcm->len+3)) {
+        return 0;
+    }
+
+    rtcm->nbyte = 0;
     
     /* check parity */
-    if (rtk_crc24q(rtcm->buff,rtcm->len)!=getbitu(rtcm->buff,rtcm->len*8,24)) {
-        trace(2,"rtcm3 parity error: len=%d\n",rtcm->len);
+    if (rtk_crc24q(rtcm->buff, rtcm->len) != getbitu(rtcm->buff, rtcm->len*8, 24)) {
+        trace(2, "rtcm3 parity error: len=%d\n", rtcm->len);
         return 0;
     }
     /* decode rtcm3 message */
