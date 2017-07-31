@@ -599,7 +599,7 @@ static void set_obstype(int format, rnxopt_t *opt)
     static const unsigned char codes_rtcm3[7][8]={ /* rtcm3 */
         {CODE_L1C,CODE_L1W,CODE_L2W,CODE_L2X,CODE_L5X},
         {CODE_L1C,CODE_L1P,CODE_L2C,CODE_L2P},
-        {CODE_L1X,CODE_L5X,CODE_L7X,CODE_L8X},
+        {CODE_L1C, CODE_L1X,CODE_L5X,CODE_L7X,CODE_L8X},
         {CODE_L1C,CODE_L2X,CODE_L5X},
         {CODE_L1C,CODE_L5X},
         {CODE_L1I,CODE_L7I},
