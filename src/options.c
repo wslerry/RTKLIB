@@ -88,7 +88,7 @@ EXPORT opt_t sysopts[]={
     {"pos2-armode",     3,  (void *)&prcopt_.modear,     ARMOPT },
     {"pos2-gloarmode",  3,  (void *)&prcopt_.glomodear,  GAROPT },
     {"pos2-bdsarmode",  3,  (void *)&prcopt_.bdsmodear,  SWTOPT },
-	{"pos2-arfilter",   3,  (void *)&prcopt_.arfilter,   SWTOPT },
+    {"pos2-arfilter",   3,  (void *)&prcopt_.arfilter,   SWTOPT },
     {"pos2-arthres",    1,  (void *)&prcopt_.thresar[0], ""     },
     {"pos2-arthres1",   1,  (void *)&prcopt_.thresar[1], ""     },
     {"pos2-arthres2",   1,  (void *)&prcopt_.thresar[2], ""     },
@@ -97,10 +97,10 @@ EXPORT opt_t sysopts[]={
     {"pos2-varholdamb", 1,  (void *)&prcopt_.varholdamb, "cyc^2"},
     {"pos2-gainholdamb",1,  (void *)&prcopt_.gainholdamb,""     },
     {"pos2-arlockcnt",  0,  (void *)&prcopt_.minlock,    ""     },
-	{"pos2-minfixsats", 0,  (void *)&prcopt_.minfixsats, ""     },
-	{"pos2-minholdsats",0,  (void *)&prcopt_.minholdsats,""     },
+    {"pos2-minfixsats", 0,  (void *)&prcopt_.minfixsats, ""     },
+    {"pos2-minholdsats",0,  (void *)&prcopt_.minholdsats,""     },
     {"pos2-mindropsats",0,  (void *)&prcopt_.mindropsats,""     },
-	{"pos2-rcvstds",    3,  (void *)&prcopt_.rcvstds,    SWTOPT },
+    {"pos2-rcvstds",    3,  (void *)&prcopt_.rcvstds,    SWTOPT },
     {"pos2-arelmask",   1,  (void *)&elmaskar_,          "deg"  },
     {"pos2-arminfix",   0,  (void *)&prcopt_.minfix,     ""     },
     {"pos2-armaxiter",  0,  (void *)&prcopt_.armaxiter,  ""     },
@@ -521,7 +521,7 @@ extern void resetsysopts(void)
 * return : none
 * notes  : to load system options, use loadopts() before calling the function
 *-----------------------------------------------------------------------------*/
-extern void getsysopts(prcopt_t *popt, solopt_t *sopt, filopt_t *fopt)
+extern void getsysopts(prcopt_t *popt, solopt_t *sopt, int nsolopts, filopt_t *fopt)
 {
     int i;
 
@@ -529,8 +529,8 @@ extern void getsysopts(prcopt_t *popt, solopt_t *sopt, filopt_t *fopt)
     
     buff2sysopts();
     if (popt) *popt=prcopt_;
-    if (sopt) {
-        for (i = 0; i < MAXSOLRTK; i++)
+    if (sopt && (nsolopts > 0)) {
+        for (i = 0; i < nsolopts; i++)
             sopt[i]=solopt_;
     }
     if (fopt) *fopt=filopt_;
