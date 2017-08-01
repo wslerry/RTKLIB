@@ -833,11 +833,9 @@ static void probserv(vt_t *vt, int nf)
     trace(4,"probserv:\n");
 
     rtksvrlock(&svr);
-    /* load rover obs data */
     for (i=0;i<svr.obs[0][0].n&&n<MAXOBS*2;i++) {
         obs[n++]=svr.obs[0][0].data[i];
     }
-    /* load base obs data */
     for (i=0;i<svr.obs[1][0].n&&n<MAXOBS*2;i++) {
         obs[n++]=svr.obs[1][0].data[i];
     }
