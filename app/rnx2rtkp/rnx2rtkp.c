@@ -116,7 +116,7 @@ int main(int argc, char **argv)
         if (!strcmp(argv[i],"-k")&&i+1<argc) {
             resetsysopts();
             if (!loadopts(argv[++i],sysopts)) return -1;
-            getsysopts(&prcopt,&solopt,&filopt);
+            getsysopts(&prcopt,&solopt,1,&filopt);
         }
     }
     for (i=1,n=0;i<argc;i++) {

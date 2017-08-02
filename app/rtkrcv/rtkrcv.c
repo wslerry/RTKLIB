@@ -121,7 +121,7 @@ static int fswapmargin  =30;            /* file swap margin (s) */
 static char sta_name[256]="";           /* station name */
 
 static prcopt_t prcopt;                 /* processing options */
-static solopt_t solopt[MAXSOLRTK]={{0}};        /* solution options */
+static solopt_t solopt[MAXSOLRTK]={{0}};/* solution options */
 static filopt_t filopt  ={""};          /* file options */
 
 /* help text -----------------------------------------------------------------*/
@@ -1177,7 +1177,7 @@ static void cmd_set(char **args, int narg, vt_t *vt)
         vt_printf(vt,"invalid option value: %s %s\n",opt->name,buff);
         return;
     }
-    getsysopts(&prcopt,solopt,&filopt);
+    getsysopts(&prcopt,solopt,MAXSOLRTK,&filopt);
 
     vt_printf(vt,"option %s changed.",opt->name);
     if (strncmp(opt->name,"console",7)) {
@@ -1204,7 +1204,7 @@ static void cmd_load(char **args, int narg, vt_t *vt)
         vt_printf(vt,"no options file: %s\n",file);
         return;
     }
-    getsysopts(&prcopt,solopt,&filopt);
+    getsysopts(&prcopt,solopt,MAXSOLRTK,&filopt);
 
     if (!loadopts(file,rcvopts)) {
         vt_printf(vt,"no options file: %s\n",file);
@@ -1313,7 +1313,7 @@ static void cmd_setposmode(char **args, int narg, vt_t *vt)
     }
 
     rtksvrlock(&svr);
-    getsysopts(&svr.rtk.opt, NULL, NULL);
+    getsysopts(&svr.rtk.opt, NULL, 0, NULL);
     rtksvrunlock(&svr);
 
     vt_printf(vt, "positioning mode changed to %s\n", buff);
@@ -1654,7 +1654,7 @@ int main(int argc, char **argv)
         return -1;
         fprintf(stderr,"no options file: %s. defaults used\n",file);
     }
-    getsysopts(&prcopt,solopt,&filopt);
+    getsysopts(&prcopt,solopt,MAXSOLRTK,&filopt);
 
     /* read navigation data */
     if (!readnav(NAVIFILE,&svr.nav)) {

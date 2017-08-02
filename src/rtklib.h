@@ -1853,7 +1853,7 @@ EXPORT int loadopts(const char *file, opt_t *opts);
 EXPORT int saveopts(const char *file, const char *mode, const char *comment,
                     const opt_t *opts);
 EXPORT void resetsysopts(void);
-EXPORT void getsysopts(prcopt_t *popt, solopt_t *sopt, filopt_t *fopt);
+EXPORT void getsysopts(prcopt_t *popt, solopt_t *sopt, int nsolopts, filopt_t *fopt);
 EXPORT void setsysopts(const prcopt_t *popt, const solopt_t *sopt,
                        const filopt_t *fopt);
 

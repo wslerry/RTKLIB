@@ -525,7 +525,7 @@ extern void resetsysopts(void)
 * return : none
 * notes  : to load system options, use loadopts() before calling the function
 *-----------------------------------------------------------------------------*/
-extern void getsysopts(prcopt_t *popt, solopt_t *sopt, filopt_t *fopt)
+extern void getsysopts(prcopt_t *popt, solopt_t *sopt, int nsolopts, filopt_t *fopt)
 {
     int i;
 
@@ -533,8 +533,8 @@ extern void getsysopts(prcopt_t *popt, solopt_t *sopt, filopt_t *fopt)
     
     buff2sysopts();
     if (popt) *popt=prcopt_;
-    if (sopt) {
-        for (i = 0; i < MAXSOLRTK; i++)
+    if (sopt && (nsolopts > 0)) {
+        for (i = 0; i < nsolopts; i++)
             sopt[i]=solopt_;
     }
     if (fopt) *fopt=filopt_;
