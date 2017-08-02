@@ -284,8 +284,9 @@ extern int input_rtcm3(rtcm_t *rtcm, unsigned char data)
             if (data != RTCM3PREAMB) {
                 trace(4, "rtcm3 data is not preamble, resetting\n");
                 rtcm->nbyte = 0;
+            } else {
+                trace(4, "rtcm3 found preamble in len sync place!\n");
             }
-            trace(4, "rtcm3 found preamble in len sync place!\n");
             /* if this byte is a new preamble, nbyte stays the same
             and this condition is checked again on the next run */
             return 0;
