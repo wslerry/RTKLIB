@@ -599,7 +599,7 @@ static void set_obstype(int format, rnxopt_t *opt)
     static const unsigned char codes_rtcm3[7][8]={ /* rtcm3 */
         {CODE_L1C,CODE_L1W,CODE_L2W,CODE_L2X,CODE_L5X},
         {CODE_L1C,CODE_L1P,CODE_L2C,CODE_L2P},
-        {CODE_L1X,CODE_L5X,CODE_L7X,CODE_L8X},
+        {CODE_L1C, CODE_L1X,CODE_L5X,CODE_L7X,CODE_L8X},
         {CODE_L1C,CODE_L2X,CODE_L5X},
         {CODE_L1C,CODE_L5X},
         {CODE_L1I,CODE_L7I},
@@ -772,7 +772,7 @@ static int syncfile(FILE **ofp, const rnxopt_t *opt, nav_t *nav)
 
     trace(3,"syncfile:\n");
 
-    for (i=0;i<NOUTFILE;i++) {
+	for (i=0;i<NOUTFILE;i++) {
 
         if (!ofp[i]) continue;
 
@@ -797,9 +797,11 @@ static int syncfile(FILE **ofp, const rnxopt_t *opt, nav_t *nav)
             showmsg("file seek to the end error");
             return 0;
         }
-
-        fflush(ofp[i]);
-        fsync(fileno(ofp[i]));
+#ifdef WIN32
+		fflush(ofp[i]);
+#else
+		fsync(fileno(ofp[i]));
+#endif
     }
 
     return 1;
@@ -1154,8 +1156,8 @@ static void setapppos(strfile_t *str, rnxopt_t *opt)
     prcopt.navsys=opt->navsys;
     
     /* point positioning with last obs data */
-    if (!pntpos(str->obs->data,str->obs->n,str->nav,&prcopt,&sol,NULL,NULL,
-                msg)) {
+    if (!pntpos(str->obs->data,str->obs->n,str->nav,NULL,&prcopt,&sol,
+                NULL,NULL,msg)) {
         trace(2,"point position error (%s)\n",msg);
         return;
     }

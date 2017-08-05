@@ -24,6 +24,7 @@ static const char rcsid[]="$Id:$";
 /* constants -----------------------------------------------------------------*/
 
 #define SQR(x)      ((x)*(x))
+#define MIN(x,y)    ((x)<=(y)?(x):(y))
 
 #define NX          (4+3)       /* # of estimated parameters */
 
@@ -55,10 +56,12 @@ static double gettgd(int sat, const nav_t *nav)
     return 0.0;
 }
 /* psendorange with code bias correction -------------------------------------*/
-static double prange(const obsd_t *obs, const nav_t *nav, const double *azel,
-                     int iter, const prcopt_t *opt, double *var)
+static double prange(const obsd_t *obs, const nav_t *nav, const smoothing_data_t *smoothing_data, 
+                     const double *azel, int iter, const prcopt_t *opt, double *var)
 {
-    const double *lam=nav->lam[obs->sat-1];
+    int sat = obs->sat - 1;
+    int rcv = obs->rcv - 1;
+    const double *lam=nav->lam[sat];
     double PC,P1,P2,P1_P2,P1_C1,P2_C2,gamma;
     int i=0,j=1,sys;
     
@@ -83,11 +86,18 @@ static double prange(const obsd_t *obs, const nav_t *nav, const double *azel,
         }
     }
     gamma=SQR(lam[j])/SQR(lam[i]); /* f1^2/f2^2 */
-    P1=obs->P[i];
-    P2=obs->P[j];
-    P1_P2=nav->cbias[obs->sat-1][0];
-    P1_C1=nav->cbias[obs->sat-1][1];
-    P2_C2=nav->cbias[obs->sat-1][2];
+    
+    if ( (opt->smoothing_mode) && smoothing_data ) {
+        P1 = smoothing_data->P_smooth[rcv][sat][i];
+        P2 = smoothing_data->P_smooth[rcv][sat][j];
+    }
+    else {
+        P1 = obs->P[i];
+        P2 = obs->P[j];
+    }
+    P1_P2=nav->cbias[sat][0];
+    P1_C1=nav->cbias[sat][1];
+    P2_C2=nav->cbias[sat][2];
     
     /* if no P1-P2 DCB, use TGD instead */
     if (P1_P2==0.0&&(sys&(SYS_GPS|SYS_GAL|SYS_QZS))) {
@@ -196,15 +206,16 @@ extern int tropcorr(gtime_t time, const nav_t *nav, const double *pos,
     return 1;
 }
 /* pseudorange residuals -----------------------------------------------------*/
-static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
-                   const double *dts, const double *vare, const int *svh,
-                   const nav_t *nav, const double *x, const prcopt_t *opt,
-                   double *v, double *H, double *var, double *azel, int *vsat,
-                   double *resp, int *ns)
+static int rescode(int iter, const obsd_t *obs, int n, const smoothing_data_t *smoothing_data,
+                   const double *rs, const double *dts, const double *vare, 
+                   const int *svh, const nav_t *nav, const double *x, 
+                   const prcopt_t *opt, double *v, double *H, double *var, 
+                   double *azel, int *vsat, double *resp, int *ns)
 {
     double r,dion,dtrp,vmeas,vion,vtrp,rr[3],pos[3],dtr,e[3],P,lam_L1;
     int i,j,nv=0,sys,mask[4]={0};
-    
+    double weight;
+    int rcv, sat;
     trace(3,"resprng : n=%d\n",n);
     
     for (i=0;i<3;i++) rr[i]=x[i]; dtr=x[3];
@@ -213,6 +224,9 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
     
     for (i=*ns=0;i<n&&i<MAXOBS;i++) {
         vsat[i]=0; azel[i*2]=azel[1+i*2]=resp[i]=0.0;
+        
+        rcv = obs[i].rcv - 1;
+        sat = obs[i].sat - 1;
         
         if (!(sys=satsys(obs[i].sat,NULL))) continue;
         
@@ -228,7 +242,7 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
             satazel(pos,e,azel+i*2)<opt->elmin) continue;
         
         /* psudorange with code bias correction */
-        if ((P=prange(obs+i,nav,azel+i*2,iter,opt,&vmeas))==0.0) continue;
+        if ((P=prange(obs+i,nav,smoothing_data,azel+i*2,iter,opt,&vmeas))==0.0) continue;
         
         /* excluded satellite? */
         if (satexclude(obs[i].sat,svh[i],opt)) continue;
@@ -238,7 +252,7 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
                       iter>0?opt->ionoopt:IONOOPT_BRDC,&dion,&vion)) continue;
         
         /* GPS-L1 -> L1/B1 */
-        if ((lam_L1=nav->lam[obs[i].sat-1][0])>0.0) {
+        if ((lam_L1=nav->lam[sat][0])>0.0) {
             dion*=SQR(lam_L1/lam_carr[0]);
         }
         /* tropospheric corrections */
@@ -261,7 +275,12 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
         vsat[i]=1; resp[i]=v[nv]; (*ns)++;
         
         /* error variance */
-        var[nv++]=varerr(opt,azel[1+i*2],sys)+vare[i]+vmeas+vion+vtrp;
+        weight = 1.0;
+        if ( opt->smoothing_mode ) {
+            /* note: assuming freq == 0 for 'single' regime */
+            weight = smoothing_weight_from_count(smoothing_data, opt, rcv, sat, 0);
+        }
+        var[nv++] = weight * varerr(opt, azel[1+i*2], sys) + vare[i] + vmeas + vion + vtrp;
         
         trace(4,"sat=%2d azel=%5.1f %4.1f res=%7.3f sig=%5.3f\n",obs[i].sat,
               azel[i*2]*R2D,azel[1+i*2]*R2D,resp[i],sqrt(var[nv-1]));
@@ -306,10 +325,10 @@ static int valsol(const double *azel, const int *vsat, int n,
     return 1;
 }
 /* estimate receiver position ------------------------------------------------*/
-static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
-                  const double *vare, const int *svh, const nav_t *nav,
-                  const prcopt_t *opt, sol_t *sol, double *azel, int *vsat,
-                  double *resp, char *msg)
+static int estpos(const obsd_t *obs, int n, const smoothing_data_t *smoothing_data, 
+                  const double *rs, const double *dts, const double *vare, 
+                  const int *svh, const nav_t *nav, const prcopt_t *opt, 
+                  sol_t *sol, double *azel, int *vsat, double *resp, char *msg)
 {
     double x[NX]={0},dx[NX],Q[NX*NX],*v,*H,*var,sig;
     int i,j,k,info,stat,nv,ns;
@@ -323,8 +342,8 @@ static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
     for (i=0;i<MAXITR;i++) {
         
         /* pseudorange residuals */
-        nv=rescode(i,obs,n,rs,dts,vare,svh,nav,x,opt,v,H,var,azel,vsat,resp,
-                   &ns);
+        nv=rescode(i,obs,n,smoothing_data,rs,dts,vare,svh,nav,x,opt,v,H,var,azel,
+                   vsat,resp,&ns);
         
         if (nv<NX) {
             sprintf(msg,"lack of valid sats ns=%d",nv);
@@ -374,10 +393,10 @@ static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
     return 0;
 }
 /* raim fde (failure detection and exclution) -------------------------------*/
-static int raim_fde(const obsd_t *obs, int n, const double *rs,
-                    const double *dts, const double *vare, const int *svh,
-                    const nav_t *nav, const prcopt_t *opt, sol_t *sol,
-                    double *azel, int *vsat, double *resp, char *msg)
+static int raim_fde(const obsd_t *obs, int n, const smoothing_data_t *smoothing_data, 
+                    const double *rs, const double *dts, const double *vare, 
+                    const int *svh, const nav_t *nav, const prcopt_t *opt, 
+                    sol_t *sol, double *azel, int *vsat, double *resp, char *msg)
 {
     obsd_t *obs_e;
     sol_t sol_e={{0}};
@@ -403,8 +422,8 @@ static int raim_fde(const obsd_t *obs, int n, const double *rs,
             svh_e[k++]=svh[j];
         }
         /* estimate receiver position without a satellite */
-        if (!estpos(obs_e,n-1,rs_e,dts_e,vare_e,svh_e,nav,opt,&sol_e,azel_e,
-                    vsat_e,resp_e,msg_e)) {
+        if (!estpos(obs_e,n-1,smoothing_data,rs_e,dts_e,vare_e,svh_e,nav,opt,&sol_e,
+                    azel_e,vsat_e,resp_e,msg_e)) {
             trace(3,"raim_fde: exsat=%2d (%s)\n",obs[i].sat,msg);
             continue;
         }
@@ -537,9 +556,9 @@ static void estvel(const obsd_t *obs, int n, const double *rs, const double *dts
 *          receiver bias are negligible (only involving glonass-gps time offset
 *          and receiver bias)
 *-----------------------------------------------------------------------------*/
-extern int pntpos(const obsd_t *obs, int n, const nav_t *nav,
-                  const prcopt_t *opt, sol_t *sol, double *azel, ssat_t *ssat,
-                  char *msg)
+extern int pntpos(const obsd_t *obs, int n, const nav_t *nav, 
+                  const smoothing_data_t *smoothing_data, const prcopt_t *opt, 
+                  sol_t *sol, double *azel, ssat_t *ssat, char *msg)
 {
     prcopt_t opt_=*opt;
     double *rs,*dts,*var,*azel_,*resp;
@@ -567,11 +586,11 @@ extern int pntpos(const obsd_t *obs, int n, const nav_t *nav,
     satposs(sol->time,obs,n,nav,opt_.sateph,rs,dts,var,svh);
     
     /* estimate receiver position with pseudorange */
-    stat=estpos(obs,n,rs,dts,var,svh,nav,&opt_,sol,azel_,vsat,resp,msg);
+    stat=estpos(obs,n,smoothing_data,rs,dts,var,svh,nav,&opt_,sol,azel_,vsat,resp,msg);
     
     /* raim fde */
     if (!stat&&n>=6&&opt->posopt[4]) {
-        stat=raim_fde(obs,n,rs,dts,var,svh,nav,&opt_,sol,azel_,vsat,resp,msg);
+        stat=raim_fde(obs,n,smoothing_data,rs,dts,var,svh,nav,&opt_,sol,azel_,vsat,resp,msg);
     }
     /* estimate receiver velocity with doppler */
     if (stat) estvel(obs,n,rs,dts,nav,&opt_,sol,azel_,vsat);

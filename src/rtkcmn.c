@@ -141,10 +141,18 @@
 
 static const char rcsid[]="$Id: rtkcmn.c,v 1.1 2008/07/17 21:48:06 ttaka Exp ttaka $";
 
+/* macros --------------------------------------------------------------------*/
+
+#define MIN(x, y)         ( (x) <= (y) ? (x) : (y) )
+#define LOGIC_XOR(x, y)   ( ((x) && !(y)) || (!(x) && (y)) ) 
+#define SIGN(x)           ( ((x) >= 0) ? (1) : (-1) )
+
 /* constants -----------------------------------------------------------------*/
 
 #define POLYCRC32   0xEDB88320u /* CRC32 polynomial */
 #define POLYCRC24Q  0x1864CFBu  /* CRC24Q polynomial */
+#define REINIT_TIME_SMOOTH  2.0    /* the max time interval between consecutive epochs 
+                                      without smoothing filter reinitialization */
 
 static const double gpst0[]={1980,1, 6,0,0,0}; /* gps time reference */
 static const double gst0 []={1999,8,22,0,0,0}; /* galileo system time reference */
@@ -197,6 +205,9 @@ const prcopt_t prcopt_default={ /* defaults processing options */
     0,0,                        /* rovpos,refpos */
     {100.0,100.0},              /* eratio[] */
     {100.0,0.003,0.003,0.0,1.0}, /* err[] */
+
+    0, 100, 0.2,                /* smooth-mode, smooth-window, smooth-varratio */
+
     {30.0,0.03,0.3},            /* std[] */
     {1E-4,1E-3,1E-4,1E-1,1E-2,0.0}, /* prn[] */
     5E-12,                      /* sclkstab */
@@ -3843,6 +3854,115 @@ extern void csmooth(obs_t *obs, int ns)
         }
     }
 }
+/* detect cycle-slip by LLI ---------------------------------------------------*/
+static int detect_slip_LLI(obsd_t obs, smoothing_data_t *smoothing_data, int direction, int freq) {
+    
+    int sat = obs.sat - 1;
+    int rcv = obs.rcv - 1;
+    unsigned int  slip;
+    unsigned char *slip_prev = &smoothing_data->slip[rcv][sat][freq];
+    unsigned int LLI = obs.LLI[freq];
+    unsigned int LLI_prev;
+    int slip_status = 0;
+
+    /* restore previous LLI */
+    if ( rcv == 0 ) LLI_prev = getbitu(slip_prev, 0, 2); /* rover */
+    else            LLI_prev = getbitu(slip_prev, 2, 2); /* base  */
+    
+    /* detect slip by cycle-slip flag in LLI */
+    slip = ( direction == 1 ) ? LLI : LLI_prev;
+    if ( slip & 1 ) slip_status = 1;
+    
+    /* detect slip by parity unknown flag transition in LLI */
+    if ( LOGIC_XOR(LLI & 2, LLI_prev & 2) ) {
+        slip_status = 1;
+        slip |= 1;
+    }
+    
+    /* save current LLI */
+    if ( rcv == 0 ) setbitu(slip_prev, 0, 2, LLI); /* rover */
+    else            setbitu(slip_prev, 2, 2, LLI); /* base */
+    
+    /* save slip flag */
+    *slip_prev |= (unsigned char) slip;
+    
+    return slip_status;
+}
+/* smoothing of code measurements by Hatch filter ----------------------------*/
+extern int smoothing_carrier(obsd_t obs, rtk_t *rtk, int freq, double wavelength, double window_max)
+{
+    int sat = obs.sat - 1;
+    int rcv = obs.rcv - 1;
+    double P = obs.P[freq];
+    double L = obs.L[freq];
+    gtime_t time = obs.time;
+    
+    int is_bad_data = (sat < 0) || (MAXSAT <= sat) || (rcv < 0) || (MAXRCV_SMOOTH <= rcv);
+    
+    if ( is_bad_data ) return 0;
+    
+    smoothing_data_t *smoothing_data = &rtk->smoothing_data;
+    double  *P_smooth    = &smoothing_data->P_smooth[rcv][sat][freq];
+    double  *L_prev      = &smoothing_data->L       [rcv][sat][freq];
+    int     *count       = &smoothing_data->count   [rcv][sat][freq];
+    gtime_t *time_start  = &smoothing_data->time_start[rcv][sat][freq];
+    gtime_t *time_prev   = &smoothing_data->time      [rcv][sat][freq];
+    double  age          = fabs(timediff(time, *time_start));
+    double  dt           = timediff(time, *time_prev);
+    int direction        = SIGN(dt);
+    int *direction_prev  = &smoothing_data->direction[rcv][sat][freq];
+    double weight, delta;
+    
+    int is_cycle_slip        = detect_slip_LLI(obs, &rtk->smoothing_data, direction, freq);
+    int is_phase_defined     = (L != 0.0) && (*L_prev != 0.0);
+    int is_smoothing_direction_changed = (direction != *direction_prev) && (*count > 1);
+    int is_filter_out_of_date          = fabs(dt) > REINIT_TIME_SMOOTH;
+    
+    int is_initialization   = (*count <= 0) || (*P_smooth == 0.0);
+    int is_reinitialization = is_filter_out_of_date || is_cycle_slip || 
+                              is_smoothing_direction_changed || (!is_phase_defined);
+                              
+    /* no actions if smoothing is already done at the moment */
+    if ( (fabs(dt) == 0.0) && (*count > 0) ) return 1;
+
+    if ( is_initialization || is_reinitialization ) {
+        *count = 1;
+        *P_smooth = P;
+        *time_start = time;
+    }
+    else {
+        /* note: final count may be slightly less than the max value 
+         *       with such a condition if some epochs are missing */
+        if (age <= window_max) (*count)++;
+        weight = 1.0 / (*count);
+        delta = wavelength * (L - (*L_prev));
+        *P_smooth = weight * P + (1 - weight) * ((*P_smooth) + delta);
+    }
+    *L_prev    = L;
+    *time_prev = time;
+    *direction_prev = direction;
+    
+    return 1;
+}
+/* weight of smoothed code pseudorange variance from filter count */
+extern double smoothing_weight_from_count(const smoothing_data_t *smoothing_data, 
+                                          const prcopt_t *opt, int rcv, int sat, int freq)
+{
+    if ( (!smoothing_data) || (!opt) ) return 1.0;
+    
+    int count_smooth = smoothing_data->count[rcv][sat][freq];
+    double weight;
+    
+    if ( (opt->smoothing_mode) && (count_smooth > 1) ) {
+        weight = 1.0 / (2 * count_smooth - 1) + opt->smoothing_varratio;
+        weight = MIN(weight, 1.0);
+    }
+    else
+        weight = 1.0;
+    
+    return weight;
+}
+
 /* uncompress file -------------------------------------------------------------
 * uncompress (uncompress/unzip/uncompact hatanaka-compression/tar) file
 * args   : char   *file     I   input file
