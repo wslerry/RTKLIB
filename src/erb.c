@@ -16,6 +16,7 @@
 #define ID_DOPS           0x04 /* message id ERB-DOPS */
 #define ID_VEL            0x05 /* message id ERB-VEL */
 #define ID_SVI            0x06 /* message id ERB-SVI */
+#define ID_RTK            0x07 /* message id ERB-RTK */
 #define LENGTH_VER           7 /* length of payload ERB-VER message */
 #define LENGTH_POS          44 /* length of payload ERB-POS message */
 #define LENGTH_STAT          9 /* length of payload ERB-STAT message */
@@ -23,6 +24,7 @@
 #define LENGTH_VEL          28 /* length of payload ERB-VEL message */
 #define LENGTH_SVI_HEAD      5 /* length of head of payload ERB-SVI message */
 #define LENGTH_SVI_SV       20 /* length of 1 SV information in ERB-SVI message */
+#define LENGTH_RTK          23 /* length of payload ERB-RTK message */
 #define VERSION_HIGH         0 /* High level of version */
 #define VERSION_MEDIUM       1 /* Medium level of version */
 #define VERSION_LOW          0 /* Low level of version */
@@ -101,6 +103,19 @@ struct erb_svi_sat {
 };
 #pragma pack(pop)
 
+#pragma pack(push,1)
+struct erb_rtk {
+    uint8_t base_num_sats;       /* Current number of satellites used for RTK calculation */
+    uint16_t age_cs;             /* Age of the corrections in centiseconds (0 when no corrections, 0xFFFF indicates overflow) */
+    int32_t baseline_N_mm;       /* distance between base and rover along the north axis in millimeters */
+    int32_t baseline_E_mm;       /* distance between base and rover along the east axis in millimeters */
+    int32_t baseline_D_mm;       /* distance between base and rover along the down axis in millimeters */
+    uint16_t ar_ratio;           /* AR ratio multiplied by 10 */
+    uint16_t base_week_number;   /* GPS Week Number of last baseline */
+    uint32_t base_time_week_ms;  /* GPS Time of Week of last baseline in milliseconds */
+};
+#pragma pack(pop)
+
 /* calculate checksum for ERB protocol ---------------------------------------*/
 static void calculatesum(const char *buff, int len, unsigned char *cka,
                          unsigned char *ckb)
@@ -170,7 +185,7 @@ static void buildstat(char *payload, struct erb_stat status, const uint32_t time
     status.weekGPS = week;
     status.fixType = fixType;
     status.fixStatus = fixStatus;
-    status.numSV = sol->ns;
+    status.numSV = sol->nSV;
     memcpy(payload, &status, LENGTH_STAT);
 }
 /* build ERB-DOPS message ----------------------------------------------------*/
@@ -226,6 +241,44 @@ static int buildsvi(char *payload, struct erb_svi_head sviHead, struct erb_svi_s
 
     return (LENGTH_SVI_HEAD + nSV * LENGTH_SVI_SV);
 }
+/* build ERB-RTK message -----------------------------------------------------*/
+static void buildrtk(char *payload, struct erb_rtk rtk, const sol_t *sol, const double *rb) {
+    double pos[3];           /* Lat/Lon/Hgt of base station */
+    double baseline_ecef[3]; /* ECEF vector between base position and rover position in meters */
+    double baseline_enu[3];  /* ENU  vector between base position and rover position in meters */
+    uint32_t tow_ms;
+    int week_number;
+    double time_sec;
+    gtime_t time_of_last_baseline;
+    int i;
+
+    if (sol->type == 0) { /* xyz-ecef */
+        ecef2pos(rb, pos);                 /* transform the base ecef position to a geodetic position */
+        for (i = 0; i < 3; i++) 
+            baseline_ecef[i] = sol->rr[i] - rb[i];
+        ecef2enu(pos, baseline_ecef, baseline_enu);
+    } 
+    else {              /* enu-baseline */
+        for (i = 0; i < 3; i++) 
+            baseline_enu[i] = sol->rr[i];
+    }
+    rtk.base_num_sats = sol->ns;    /* Current number of satellites used for RTK calculation */
+
+    time_sec = (double)sol->time.time + sol->time.sec - sol->age;
+    time_of_last_baseline.time = (time_t)time_sec;
+    time_of_last_baseline.sec = time_sec - (double)time_of_last_baseline.time;
+    tow_ms = time2gpst(time_of_last_baseline, &week_number);
+
+    rtk.base_week_number = week_number;  /* GPS Week Number of last baseline */
+    rtk.base_time_week_ms = tow_ms;  /* GPS Time of Week of last baseline in milliseconds */
+
+    rtk.baseline_N_mm =  1000 * baseline_enu[1]; /* North distance between base and rover -> convert (double) meters into (int32_t) millimeters */
+    rtk.baseline_E_mm =  1000 * baseline_enu[0]; /* East  distance between base and rover -> convert (double) meters into (int32_t) millimeters */
+    rtk.baseline_D_mm = -1000 * baseline_enu[2]; /* Down  distance between base and rover -> convert (double) meters into (int32_t) millimeters */
+    rtk.age_cs        = 100 * sol->age;  /* Age of the corrections in centiseconds (0 when no corrections, 0xFFFF indicates overflow) */
+    rtk.ar_ratio      = 10 * sol->ratio; /* AR ratio multiplied by 10 */
+    memcpy(payload, &rtk, LENGTH_RTK);
+}
 /* append message ------------------------------------------------------------*/
 static void appendmessage(char **p, const char mesID, const char *payload, const int length)
 {
@@ -239,7 +292,7 @@ static void appendmessage(char **p, const char mesID, const char *payload, const
     *p += sprintf(*p, "%c%c", cka, ckb);
 }
 /* output solution in the form of ERB protocol -------------------------------*/
-extern int outerb(unsigned char *buff, const sol_t *sol)
+extern int outerb(unsigned char *buff, const sol_t *sol, const double *rb)
 {
     gtime_t time;
     char *p=(char *)buff;
@@ -251,6 +304,7 @@ extern int outerb(unsigned char *buff, const sol_t *sol)
     struct erb_vel velocity;
     struct erb_svi_head sviHead;
     struct erb_svi_sat sviSat[32];
+    struct erb_rtk rtk;
     uint32_t gpst;
     int week, lengthSvi;
 
@@ -279,6 +333,9 @@ extern int outerb(unsigned char *buff, const sol_t *sol)
     /*------------ ERB-SVI --------------------*/
     lengthSvi = buildsvi(payload, sviHead, sviSat, gpst, sol);
     appendmessage(&p, ID_SVI, payload, lengthSvi);
+    /*------------ ERB-RTK --------------------*/
+    buildrtk(payload, rtk, sol, rb);
+    appendmessage(&p, ID_RTK, payload, LENGTH_RTK);
 
     return p - (char *)buff;
 }
