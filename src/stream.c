@@ -865,6 +865,7 @@ static int readfile(file_t *file, unsigned char *buff, int nmax, char *msg)
             sprintf(msg,"end");
             return 0;
         }
+        if (!file->repmode) tick_master=tick;
         fpos=(size_t)fpos_buff[0];
         if (file->size_fpos==8&&sizeof(size_t)==8) {
             fpos+=((size_t)fpos_buff[1]<<32);
