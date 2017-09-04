@@ -794,6 +794,15 @@ static void udbias(rtk_t *rtk, double tt, const obsd_t *obs, const int *sat,
             rtk->P[j+j*rtk->nx]+=rtk->opt.prn[0]*rtk->opt.prn[0]*tt;
             slip=rtk->ssat[sat[i]-1].slip[f];
             if (rtk->opt.ionoopt==IONOOPT_IFLC) slip|=rtk->ssat[sat[i]-1].slip[1];
+
+            if ( rtk->ssat[sat[i]-1].to_reset[f] ) {
+                rtk->x[j]=0.0;
+                rtk->ssat[sat[i]-1].lock[f]=-rtk->opt.minlock;
+                /* retain icbiases for GLONASS sats */
+                if (rtk->ssat[sat[i]-1].sys!=SYS_GLO) rtk->ssat[sat[i]-1].icbias[f]=0;
+                continue;
+            }
+            
             if (rtk->opt.modear==ARMODE_INST||!(slip&1)) continue;
             rtk->x[j]=0.0;
             rtk->ssat[sat[i]-1].lock[f]=-rtk->opt.minlock;
@@ -1486,7 +1495,7 @@ static int ddmat(rtk_t *rtk, double *D,int gps,int glo,int sbs)
                 }
                 /* set sat to use for fixing ambiguity if meets criteria */
                 if (rtk->ssat[i-k].lock[f]>=0&&!(rtk->ssat[i-k].slip[f]&2)&&
-                    rtk->ssat[i-k].azel[1]>=rtk->opt.elmaskar&&!nofix) {
+                    rtk->ssat[i-k].azel[1]>=rtk->opt.elmaskar&&!nofix&&(!rtk->ssat[i-k].no_fix[f])) {
                     rtk->ssat[i-k].fix[f]=2; /* fix */
                     break;/* break out of loop if find good sat */
                 }
@@ -1503,7 +1512,7 @@ static int ddmat(rtk_t *rtk, double *D,int gps,int glo,int sbs)
                 if (sbs==0 && satsys(j-k+1,NULL)==SYS_SBS) continue; 
                 if (rtk->ssat[j-k].lock[f]>=0&&!(rtk->ssat[j-k].slip[f]&2)&&
                     rtk->ssat[i-k].vsat[f]&&
-                    rtk->ssat[j-k].azel[1]>=rtk->opt.elmaskar&&!nofix) {
+                    rtk->ssat[j-k].azel[1]>=rtk->opt.elmaskar&&!nofix&&(!rtk->ssat[j-k].no_fix[f])) {
                     /* set D coeffs to subtract sat j from sat i */
                     D[i+(na+nb)*nx]= 1.0;
                     D[j+(na+nb)*nx]=-1.0;
@@ -1567,8 +1576,8 @@ static void holdamb(rtk_t *rtk, const double *xa)
     for (m=0;m<4;m++) for (f=0;f<nf;f++) {
         
         for (n=i=0;i<MAXSAT;i++) {
-            if (!test_sys(rtk->ssat[i].sys,m)||rtk->ssat[i].fix[f]!=2||
-                rtk->ssat[i].azel[1]<rtk->opt.elmaskhold) {
+            if ((!test_sys(rtk->ssat[i].sys,m))||(rtk->ssat[i].fix[f]!=2)||
+                (rtk->ssat[i].azel[1]<rtk->opt.elmaskhold)||(rtk->ssat[i].no_fix[f])) {
                 continue;
             }
             index[n++]=IB(i+1,f,&rtk->opt);
@@ -2169,6 +2178,57 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     
     return stat!=SOLQ_NONE;
 }
+
+/* ------------------------------------------------------------------------------ */
+
+static int rtk_IsValid(rtk_t *rtk)
+{
+    if ( !rtk ) return 0;
+    if ( (!rtk->x) || (!rtk->xa) ) return 0;
+    if ( (!rtk->P) || (!rtk->Pa) ) return 0;
+    
+    return 1;
+}
+
+static void rtk_Copy(rtk_t *rtk_source, rtk_t *rtk_destination)
+{
+    int i, j, index;
+    int nx, na;
+    double *x, *P;
+    double *xa, *Pa;
+    
+    assert( rtk_IsValid(rtk_source) );
+    assert( rtk_IsValid(rtk_destination) );
+    
+    nx = rtk_source->nx;
+    na = rtk_source->na;
+    x  = rtk_destination->x;
+    P  = rtk_destination->P;
+    xa = rtk_destination->xa;
+    Pa = rtk_destination->Pa;
+    
+    for (i = 0; i < nx; i++) {
+        x[i] = rtk_source->x[i];
+        for (j = 0; j < nx; j++ ) {
+            index = nx * i + j;
+            P[index] = rtk_source->P[index];
+        }
+    }
+    for (i = 0; i < na; i++) {
+        xa[i] = rtk_source->xa[i];
+        for (j = 0; j < na; j++ ) {
+            index = na * i + j;
+            Pa[index] = rtk_source->Pa[index];
+        }
+    }
+    
+    *rtk_destination = *rtk_source;
+    
+    rtk_destination->x  = x;
+    rtk_destination->P  = P;
+    rtk_destination->xa = xa;
+    rtk_destination->Pa = Pa;
+}
 /* initialize rtk control ------------------------------------------------------
 * initialize rtk control struct
 * args   : rtk_t    *rtk    IO  rtk control/result struct
@@ -2181,6 +2241,7 @@ extern void rtkinit(rtk_t *rtk, const prcopt_t *opt)
     ambc_t ambc0={{{0}}};
     ssat_t ssat0={0};
     int i, j, k;
+    int sat, freq;
     
     trace(3,"rtkinit :\n");
     
@@ -2213,6 +2274,13 @@ extern void rtkinit(rtk_t *rtk, const prcopt_t *opt)
                 rtk->smoothing_data.direction[i][j][k] = 1;
                 rtk->smoothing_data.slip     [i][j][k] = 0;
             }
+            
+    for (sat = 0; sat < MAXSAT; sat++) {
+        for (freq = 0; freq < rtk->opt.nf; freq++) {
+            rtk->ssat[sat].to_reset[freq] = 0;
+            rtk->ssat[sat].no_fix[freq]   = 0;
+        }
+    }
 }
 /* free rtk control ------------------------------------------------------------
 * free memory for rtk control struct
@@ -2294,9 +2362,14 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     gtime_t time;
     int i,nu,nr;
     char msg[128]="";
+    int sat, freq;
+    double resc;
+    unsigned char fix, sol_stat;
+    int is_need_to_recalc = 0;
+    rtk_t *rtk_trial;
+    
     trace(3,"rtkpos  : time=%s n=%d\n",time_str(obs[0].time,3),n);
     trace(4,"obs=\n"); traceobs(4,obs,n);
-    int sat, freq;
     /*trace(5,"nav=\n"); tracenav(5,nav);*/
     
     /* set base station position */
@@ -2305,9 +2378,9 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
         for (i=0;i<6;i++) rtk->rb[i]=i<3?opt->rb[i]:0.0;
     }
     /* count rover/base station observations */
-    for (nu=0;nu   <n&&obs[nu   ].rcv==1;nu++) ;
-    for (nr=0;nu+nr<n&&obs[nu+nr].rcv==2;nr++) ;
-    
+    for (nu=0;nu   <n&&obs[nu   ].rcv==1;nu++);
+    for (nr=0;nu+nr<n&&obs[nu+nr].rcv==2;nr++);
+
     time=rtk->sol.time; /* previous epoch */
     
     /* carrier-smoothing of code measurements */
@@ -2392,9 +2465,67 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
             return 1;
         }
     }
-    /* relative potitioning */
-    relpos(rtk,obs,nu,nr,nav);
-    outsolstat(rtk,nav);
+    
+    /* todo: generalize to iterative recalculation */
+    /* relative positioning */
+    if ( opt->residual_mode ) {
+        rtk_trial = malloc(sizeof(rtk_t));
+        assert( rtk_trial != NULL );
+        rtkinit(rtk_trial, &rtk->opt);
+        assert( rtk_IsValid(rtk_trial) );
+        
+        rtk_Copy(rtk, rtk_trial);
+        relpos(rtk_trial, obs, nu, nr, nav);
+        
+        sol_stat = rtk_trial->sol.stat; 
+        /* check carrier-phase residuals */
+        for (i = 0; i < nu; i++) {
+            
+            sat = obs[i].sat - 1;
+            for (freq = 0; freq < opt->nf; freq++) {
+                if ( !rtk_trial->ssat[sat].vsat[freq] ) continue;
+                resc = rtk_trial->ssat[sat].resc[freq];
+                fix  = rtk_trial->ssat[sat].fix[freq];
+                if ( sol_stat == SOLQ_FIX ) {
+                    if ( fabs(resc) > opt->residual_reset_fix ) {
+                        is_need_to_recalc = 1;
+                        rtk->ssat[sat].to_reset[freq] = 1;
+                    }
+                    else if ( ((fix == 2) || (fix == 3)) && (fabs(resc) > opt->residual_block_fix_sat) ) { /* fix or hold */
+                        is_need_to_recalc = 1;
+                        rtk->ssat[sat].no_fix[freq] = 1;
+                    }
+                }
+                if ( sol_stat == SOLQ_FLOAT ) {
+                    if ( fabs(resc) > opt->residual_reset_float ) {
+                        is_need_to_recalc = 1;
+                        rtk->ssat[sat].to_reset[freq] = 1;
+                    }
+                }
+            }
+        }
+
+        if ( is_need_to_recalc ) {
+            relpos(rtk, obs, nu, nr, nav);
+            for (sat = 0; sat < MAXSAT; sat++) {
+                for (freq = 0; freq < opt->nf; freq++) {
+                    rtk->ssat[sat].to_reset[freq] = 0;
+                    rtk->ssat[sat].no_fix[freq]   = 0;
+                }
+            }
+        }
+        else {
+            rtk_Copy(rtk_trial, rtk);
+        }
+        
+        rtkfree(rtk_trial);
+        free(rtk_trial);
+    }
+    else { /* !opt->residual_mode */
+        relpos(rtk, obs, nu, nr, nav);
+    }
+    
+    outsolstat(rtk, nav);
     
     return 1;
 }
