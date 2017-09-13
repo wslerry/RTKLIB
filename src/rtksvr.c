@@ -989,7 +989,7 @@ extern int rtksvropenstr(rtksvr_t *svr, int index, int str, const char *path,
 {
     tracet(3,"rtksvropenstr: index=%d str=%d path=%s\n",index,str,path);
 
-    if (index<3||index>=MAXSTRRTK||!svr->state) return 0;
+    if (index<SOLUTIONSTROFFSET||index>=MAXSTRRTK||!svr->state) return 0;
 
     rtksvrlock(svr);
 
@@ -1002,11 +1002,11 @@ extern int rtksvropenstr(rtksvr_t *svr, int index, int str, const char *path,
         rtksvrunlock(svr);
         return 0;
     }
-    if (index<=SOLUTIONSTROFFSET+MAXSOLRTK) {
-        svr->solopt[index-3]=*solopt;
+    if (index<SOLUTIONSTROFFSET+MAXSOLRTK) {
+        svr->solopt[index-SOLUTIONSTROFFSET]=*solopt;
 
         /* write solution header to solution stream */
-        writesolhead(svr->stream+index,svr->solopt+index-3);
+        writesolhead(svr->stream+index,svr->solopt+index-SOLUTIONSTROFFSET);
     }
     rtksvrunlock(svr);
     return 1;
