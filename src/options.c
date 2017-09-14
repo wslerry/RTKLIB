@@ -120,6 +120,7 @@ EXPORT opt_t sysopts[]={
     {"smooth-varratio", 1,  (void *)&prcopt_.smoothing_varratio,""},
     
     {"resid-mode",      3,  (void *)&prcopt_.residual_mode,SWTOPT},
+    {"resid-maxiter",   0,  (void *)&prcopt_.residual_maxiter,""},
     {"resid-reset_fix", 1,  (void *)&prcopt_.residual_reset_fix,"m"},
     {"resid-reset_float",1, (void *)&prcopt_.residual_reset_float,"m"},
     {"resid-block_fix_sat",1,(void *)&prcopt_.residual_block_fix_sat, "m"},

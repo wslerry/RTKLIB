@@ -1130,6 +1130,7 @@ typedef struct {        /* processing options type */
     double smoothing_varratio; /* asymptotic factor of code variance decrease due to smoothing */
 
     int    residual_mode;         /* on/off */
+    int    residual_maxiter;      /* max number of iterations */ 
     double residual_reset_fix;    /* carrier-phase residual threshold to reset phase-bias when solution status is FIX (m) */
     double residual_reset_float;  /* carrier-phase residual threshold to reset phase-bias when solution status is FLOAT (m) */
     double residual_block_fix_sat;/* carrier-phase residual threshold to prevent using a satellite for ambiguity resolution (m) */
@@ -1244,10 +1245,10 @@ typedef struct {        /* satellite status type */
     double azel[2];     /* azimuth/elevation angles {az,el} (rad) */
     double resp[NFREQ]; /* residuals of pseudorange (m) */
     double resc[NFREQ]; /* residuals of carrier-phase (m) */
-	double icbias[NFREQ];  /* glonass IC bias (cycles) */
+    double icbias[NFREQ];  /* glonass IC bias (cycles) */
     unsigned char vsat[NFREQ]; /* valid satellite flag */
     unsigned char snr [NFREQ]; /* signal strength (0.25 dBHz) */
-    unsigned char fix [NFREQ]; /* ambiguity fix flag (1:fix,2:float,3:hold) */
+    unsigned char fix [NFREQ]; /* ambiguity fix flag (1:float,2:fix,3:hold) */
     unsigned char slip[NFREQ]; /* cycle-slip flag */
     unsigned char to_reset[NFREQ]; /* flag signalizing the need to reset phase-bias if not 0 */
     unsigned char no_fix[NFREQ];   /* prevent using satellite for ambiguity resolution if not 0 */

@@ -2181,7 +2181,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
 
 /* ------------------------------------------------------------------------------ */
 
-static int rtk_IsValid(rtk_t *rtk)
+static int rtk_is_valid(const rtk_t *rtk)
 {
     if ( !rtk ) return 0;
     if ( (!rtk->x) || (!rtk->xa) ) return 0;
@@ -2190,15 +2190,15 @@ static int rtk_IsValid(rtk_t *rtk)
     return 1;
 }
 
-static void rtk_Copy(rtk_t *rtk_source, rtk_t *rtk_destination)
+static void rtk_copy(const rtk_t *rtk_source, rtk_t *rtk_destination)
 {
     int i, j, index;
     int nx, na;
     double *x, *P;
     double *xa, *Pa;
     
-    assert( rtk_IsValid(rtk_source) );
-    assert( rtk_IsValid(rtk_destination) );
+    assert( rtk_is_valid(rtk_source) );
+    assert( rtk_is_valid(rtk_destination) );
     
     nx = rtk_source->nx;
     na = rtk_source->na;
@@ -2229,6 +2229,173 @@ static void rtk_Copy(rtk_t *rtk_source, rtk_t *rtk_destination)
     rtk_destination->xa = xa;
     rtk_destination->Pa = Pa;
 }
+
+static void rtk_free(rtk_t *rtk)
+{
+    rtkfree(rtk);
+    free(rtk);
+}
+
+static rtk_t *rtk_init(prcopt_t *opt)
+{
+    rtk_t *rtk = malloc(sizeof(rtk_t));
+    if ( !rtk ) return NULL;
+    rtkinit(rtk, opt);
+    if ( !rtk_is_valid(rtk) ) { 
+        rtk_free(rtk); 
+        return NULL;
+    }
+    
+    return rtk;
+}
+
+/*
+ * general type of estimator for RTK positioning
+ *  args:  rtk      IO      gnss solution structure
+ *         obsd     I       satellite observations
+ *         n        I       number of observations
+ *         nav      I       satellite navigation data
+ *  return: status (0:bad, 1:good)
+ */
+typedef int (*rtk_estimator_fpt) (rtk_t *, const obsd_t *, int, const nav_t *);
+
+/*
+ * general type of reestimation modifier
+ * args:  rtk       IO      gnss solution structure to modify
+ *        rtk_trial I       gnss solution structure with trial iteration produced
+ *  return: status (0:no modifications, 1:some modifications produced)
+ *  note: if (rtk_trial == NULL) return 0 and cancel modifications  
+ */
+typedef int (*rtk_reestimation_modifier_fpt) (rtk_t *, const rtk_t *);
+
+/* standard estimator for RTK positioning (a wrapper to 'relpos' function) */
+static int rtk_estimate_standard(rtk_t *rtk, const obsd_t *obsd, int n_obsd, const nav_t *nav)
+{
+    int n_rover, n_base;
+    
+    assert( rtk_is_valid(rtk) );
+    assert( obsd != NULL );
+    assert( n_obsd >= 0 );
+    assert( nav != NULL );
+    
+    /* count rover/base station observations */
+    for (n_rover = 0; (n_rover < n_obsd) && (obsd[n_rover].rcv == 1); n_rover++);
+    for (n_base = 0; (n_rover+n_base < n_obsd) && (obsd[n_rover+n_base].rcv == 2); n_base++);
+    
+    assert( n_rover + n_base == n_obsd );
+    
+    return relpos(rtk, obsd, n_rover, n_base, nav);
+}
+
+/* reestimation modifier taking into account carrier-phase residuals */
+static int rtk_modify_on_large_residuals(rtk_t *rtk, const rtk_t *rtk_trial)
+{
+    int sat, freq;
+    int stat = 0;
+    double resc_abs;
+    unsigned char fix, sol_stat;
+    const prcopt_t *opt;
+    
+    assert( rtk_is_valid(rtk) );
+    
+    if ( rtk_trial == NULL ) { /* reset modifications */
+        
+        for (sat = 0; sat < MAXSAT; sat++) {
+            for (freq = 0; freq < rtk->opt.nf; freq++) {
+                rtk->ssat[sat].to_reset[freq] = 0;
+                rtk->ssat[sat].no_fix[freq]   = 0;
+            }
+        }
+        return 0;
+    }
+    
+    assert( rtk_is_valid(rtk_trial) );
+    
+    opt = &rtk_trial->opt;
+    
+    /* check carrier-phase residuals for each satellite/frequency */
+    sol_stat = rtk_trial->sol.stat;
+    
+    for (sat = 0; sat < MAXSAT; sat++) {
+            
+        for (freq = 0; freq < opt->nf; freq++) {
+            
+            if ( !rtk_trial->ssat[sat].vsat[freq] ) continue;
+            resc_abs = fabs(rtk_trial->ssat[sat].resc[freq]);
+            fix  = rtk_trial->ssat[sat].fix[freq];
+            
+            if ( sol_stat == SOLQ_FIX ) {
+                if ( resc_abs > opt->residual_reset_fix ) {   /* set 'to_reset' flag if residual is beyond a threshold */
+                    if ( rtk->ssat[sat].to_reset[freq] == 0 ) stat = 1;
+                    rtk->ssat[sat].to_reset[freq] = 1;
+                }
+                else if ( ((fix == 2) || (fix == 3))                      /* fix or hold satellite status */ 
+                          && (resc_abs > opt->residual_block_fix_sat) ) { /* set 'no_fix' flag if residual is beyond a threshold */
+                    if ( rtk->ssat[sat].no_fix[freq] == 0 ) stat = 1;
+                    rtk->ssat[sat].no_fix[freq] = 1;
+                }
+            }
+            if ( sol_stat == SOLQ_FLOAT ) {
+                if ( resc_abs > opt->residual_reset_float ) {  /* set 'to_reset' flag if residual is beyond a threshold */
+                     if ( rtk->ssat[sat].to_reset[freq] == 0 ) stat = 1;
+                     rtk->ssat[sat].to_reset[freq] = 1;
+                }
+            }
+        }
+    }
+    
+    return stat;
+}
+
+/* generalized iterative estimator for RTK positioning */
+static int rtk_estimate_iterative(rtk_t *rtk, const obsd_t *obsd, int n_obsd, const nav_t *nav, 
+                                  rtk_estimator_fpt estimator, rtk_reestimation_modifier_fpt reestimation_modifier, int maxiter)
+{
+    int i, stat;
+    rtk_t *rtk_trial;
+    rtk_t *rtk_trial_prev;
+    
+    assert( rtk_is_valid(rtk) );
+    assert( obsd != NULL );
+    assert( nav != NULL );
+    assert( estimator != NULL );
+    assert( reestimation_modifier != NULL );
+    if ( maxiter <= 0 ) maxiter = 1;
+    
+    rtk_trial = rtk_init(&rtk->opt);
+    if ( !rtk_trial ) return 0;
+    rtk_trial_prev = rtk_init(&rtk->opt);
+    if ( !rtk_trial_prev ) { 
+        rtk_free(rtk_trial); 
+        return 0; 
+    }
+    
+    for (i = 0; i < maxiter; i++) {
+        
+        rtk_copy(rtk, rtk_trial);
+        stat = estimator(rtk_trial, obsd, n_obsd, nav);
+        if ( stat == 0 ) break;
+        if ( !reestimation_modifier(rtk, rtk_trial) ) break;      /* modify some rtk struct fields to produce reestimation;
+                                                                     break if no modifications applied */
+        rtk_copy(rtk_trial, rtk_trial_prev);
+    }
+    
+    if ( stat != 0 ) rtk_copy(rtk_trial, rtk);                    /* last estimation is good */
+    if ( (stat == 0) && (i != 0) ) rtk_copy(rtk_trial_prev, rtk); /* last estimation is bad, choose previous */
+    reestimation_modifier(rtk, NULL);                             /* reset reestimation modifications */
+        
+    if ( (stat == 0) && (i == 0) ) { /* failed on first iteration */
+        rtk_copy(rtk_trial, rtk);
+        rtk_free(rtk_trial);
+        rtk_free(rtk_trial_prev);
+        return 0;
+    }
+    
+    rtk_free(rtk_trial);
+    rtk_free(rtk_trial_prev);
+    return 1;
+}
+
 /* initialize rtk control ------------------------------------------------------
 * initialize rtk control struct
 * args   : rtk_t    *rtk    IO  rtk control/result struct
@@ -2363,10 +2530,7 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     int i,nu,nr;
     char msg[128]="";
     int sat, freq;
-    double resc;
-    unsigned char fix, sol_stat;
-    int is_need_to_recalc = 0;
-    rtk_t *rtk_trial;
+    int residual_maxiter = opt->residual_maxiter;
     
     trace(3,"rtkpos  : time=%s n=%d\n",time_str(obs[0].time,3),n);
     trace(4,"obs=\n"); traceobs(4,obs,n);
@@ -2466,63 +2630,13 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
         }
     }
     
-    /* todo: generalize to iterative recalculation */
     /* relative positioning */
     if ( opt->residual_mode ) {
-        rtk_trial = malloc(sizeof(rtk_t));
-        assert( rtk_trial != NULL );
-        rtkinit(rtk_trial, &rtk->opt);
-        assert( rtk_IsValid(rtk_trial) );
-        
-        rtk_Copy(rtk, rtk_trial);
-        relpos(rtk_trial, obs, nu, nr, nav);
-        
-        sol_stat = rtk_trial->sol.stat; 
-        /* check carrier-phase residuals */
-        for (i = 0; i < nu; i++) {
-            
-            sat = obs[i].sat - 1;
-            for (freq = 0; freq < opt->nf; freq++) {
-                if ( !rtk_trial->ssat[sat].vsat[freq] ) continue;
-                resc = rtk_trial->ssat[sat].resc[freq];
-                fix  = rtk_trial->ssat[sat].fix[freq];
-                if ( sol_stat == SOLQ_FIX ) {
-                    if ( fabs(resc) > opt->residual_reset_fix ) {
-                        is_need_to_recalc = 1;
-                        rtk->ssat[sat].to_reset[freq] = 1;
-                    }
-                    else if ( ((fix == 2) || (fix == 3)) && (fabs(resc) > opt->residual_block_fix_sat) ) { /* fix or hold */
-                        is_need_to_recalc = 1;
-                        rtk->ssat[sat].no_fix[freq] = 1;
-                    }
-                }
-                if ( sol_stat == SOLQ_FLOAT ) {
-                    if ( fabs(resc) > opt->residual_reset_float ) {
-                        is_need_to_recalc = 1;
-                        rtk->ssat[sat].to_reset[freq] = 1;
-                    }
-                }
-            }
-        }
-
-        if ( is_need_to_recalc ) {
-            relpos(rtk, obs, nu, nr, nav);
-            for (sat = 0; sat < MAXSAT; sat++) {
-                for (freq = 0; freq < opt->nf; freq++) {
-                    rtk->ssat[sat].to_reset[freq] = 0;
-                    rtk->ssat[sat].no_fix[freq]   = 0;
-                }
-            }
-        }
-        else {
-            rtk_Copy(rtk_trial, rtk);
-        }
-        
-        rtkfree(rtk_trial);
-        free(rtk_trial);
+        if ( residual_maxiter < 2 ) residual_maxiter = 2; /* at least two iterations are necessary */
+        rtk_estimate_iterative(rtk, obs, n, nav, &rtk_estimate_standard, &rtk_modify_on_large_residuals, residual_maxiter);
     }
-    else { /* !opt->residual_mode */
-        relpos(rtk, obs, nu, nr, nav);
+    else {
+        rtk_estimate_standard(rtk, obs, n, nav);
     }
     
     outsolstat(rtk, nav);
