@@ -2190,44 +2190,42 @@ static int rtk_is_valid(const rtk_t *rtk)
     return 1;
 }
 
+static void rtk_copy_states(const rtk_t *rtk_source, rtk_t *rtk_destination)
+{
+    assert( rtk_source != NULL );
+    assert( rtk_destination != NULL );
+    
+    memcpy(rtk_destination->x, rtk_source->x, rtk_source->nx * sizeof(double));
+    memcpy(rtk_destination->P, rtk_source->P, SQR(rtk_source->nx) * sizeof(double));
+    memcpy(rtk_destination->xa, rtk_source->xa, rtk_source->na * sizeof(double));
+    memcpy(rtk_destination->Pa, rtk_source->Pa, SQR(rtk_source->na) * sizeof(double));
+}
+
 static void rtk_copy(const rtk_t *rtk_source, rtk_t *rtk_destination)
 {
-    int i, j, index;
-    int nx, na;
     double *x, *P;
     double *xa, *Pa;
     
     assert( rtk_is_valid(rtk_source) );
     assert( rtk_is_valid(rtk_destination) );
     
-    nx = rtk_source->nx;
-    na = rtk_source->na;
+    /* tmp copy of rtk_destination pointer fields */
     x  = rtk_destination->x;
     P  = rtk_destination->P;
     xa = rtk_destination->xa;
     Pa = rtk_destination->Pa;
     
-    for (i = 0; i < nx; i++) {
-        x[i] = rtk_source->x[i];
-        for (j = 0; j < nx; j++ ) {
-            index = nx * i + j;
-            P[index] = rtk_source->P[index];
-        }
-    }
-    for (i = 0; i < na; i++) {
-        xa[i] = rtk_source->xa[i];
-        for (j = 0; j < na; j++ ) {
-            index = na * i + j;
-            Pa[index] = rtk_source->Pa[index];
-        }
-    }
-    
+    /* field-to-field copy */
     *rtk_destination = *rtk_source;
     
+    /* restore pointers */
     rtk_destination->x  = x;
     rtk_destination->P  = P;
     rtk_destination->xa = xa;
     rtk_destination->Pa = Pa;
+    
+    /* deep copy */
+    rtk_copy_states(rtk_source, rtk_destination);
 }
 
 static void rtk_free(rtk_t *rtk)
@@ -2279,8 +2277,14 @@ static int rtk_estimate_standard(rtk_t *rtk, const obsd_t *obsd, int n_obsd, con
     assert( nav != NULL );
     
     /* count rover/base station observations */
-    for (n_rover = 0; (n_rover < n_obsd) && (obsd[n_rover].rcv == 1); n_rover++);
-    for (n_base = 0; (n_rover+n_base < n_obsd) && (obsd[n_rover+n_base].rcv == 2); n_base++);
+    n_rover = 0;
+    while ( (n_rover < n_obsd) && (obsd[n_rover].rcv == 1) ) {          /* rover observations (rcv == 1) */
+        n_rover++;
+    }
+    n_base = 0;
+    while ( ((n_rover+n_base) < n_obsd) && (obsd[n_rover].rcv == 2) ) { /* base observations (rcv == 2) */
+        n_base++;
+    }
     
     assert( n_rover + n_base == n_obsd );
     
