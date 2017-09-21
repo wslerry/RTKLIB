@@ -785,6 +785,17 @@ static void obs_queue_add(obs_queue_t *obs_queue, const obs_t *obs, int nobs)
     
     for (i = 0; i < nobs; i++) {
         
+        /* check if cycle slip occurred for every satellite/frequency */
+        for (j = 0; j < obs[i].n; j++) {
+            for (freq = 0; freq < NFREQ; freq++) {
+                
+                sat = obs[i].data[j].sat;
+                if ( obs[i].data[j].LLI[freq] & 1 ) { /* cycle slip occurred */
+                    obs_queue->is_cycle_slip_detected[sat][freq] = 1;
+                }
+            }
+        }
+
         if ( obs_get_number_of_good_sats(&obs[i]) <= 0 ) continue; /* skip if no obs data */
 
         /* add i-th obs to the queue */
@@ -803,16 +814,17 @@ static void obs_queue_add(obs_queue_t *obs_queue, const obs_t *obs, int nobs)
         }
         obs_copy(&obs[i], obs_queue->obs[offset]);
         
-        /* check if cycle slip occurred for every satellite/frequency */
+        /*
+         * check if cycle slip occurred previously;
+         * if cycle slip detected set LLI flag for all subsequent obs data 
+         * of specified sat/freq until cycle slip been handled
+         */
         for (j = 0; j < obs[i].n; j++) {
             for (freq = 0; freq < NFREQ; freq++) {
                 
                 sat = obs[i].data[j].sat;
-                if ( obs[i].data[j].LLI[freq] & 1 ) {                           /* cycle slip occurred */
-                    obs_queue->is_cycle_slip_detected[sat][freq] = 1;
-                }
-                else if ( obs_queue->is_cycle_slip_detected[sat][freq] == 1 ) { /* cycle slip detected previously */
-                    obs_queue->obs[offset]->data[j].LLI[freq] |= 1; 
+                if ( obs_queue->is_cycle_slip_detected[sat][freq] == 1 ) { /* cycle slip detected previously */
+                    obs_queue->obs[offset]->data[j].LLI[freq] |= 1;
                 }
             }
         }
@@ -848,7 +860,7 @@ static void obs_queue_get_projection(obs_queue_t *obs_queue, obs_t *obs_destinat
         
         sys = sys_array[i];
         
-        /* find first epoch in the queue containing specified sat sys */
+        /* find first obs record containing specified sat sys */
         for (j = length-1; j >= 0; j--) {
             
             offset = obs_queue->offset[j];
@@ -951,13 +963,11 @@ static void *rtksvrthread(void *arg)
             }
         }
         
-        while ( (fobs[0] > 0) 
-                && (obs_get_number_of_good_sats(&svr->obs[0][fobs[0]-1]) <= 0) ) { /* skip empty rover obs */
+        while ( (fobs[0] > 0) && (svr->obs[0][fobs[0]-1].n <= 0) ) { /* skip empty rover obs */
                 
             fobs[0]--;
         }
-        while ( (fobs[1] > 0) 
-                && (obs_get_number_of_good_sats(&svr->obs[1][fobs[1]-1]) <= 0) ) { /* skip empty base obs */
+        while ( (fobs[1] > 0) && (svr->obs[1][fobs[1]-1].n <= 0) ) { /* skip empty base obs */
             
             fobs[1]--;
         }
@@ -993,7 +1003,7 @@ static void *rtksvrthread(void *arg)
             for (j=0;j<svr->obs[0][i].n&&obs.n<MAXOBS*2;j++) {
                 obs.data[obs.n++]=svr->obs[0][i].data[j];
             }
-            if ( obs_get_number_of_good_sats(&obs) <= 0 ) continue; 
+            if ( obs.n <= 0 ) continue; 
             
             /* get optimal base obs from the queue to svr->obs[1][0] */
             if ( svr->rtk.opt.base_multi_epoch ) {
