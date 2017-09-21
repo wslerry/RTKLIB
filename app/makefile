@@ -8,6 +8,8 @@ DIRS     = pos2kml str2str rnx2rtkp convbin rtkrcv
 
 .DEFAULT_GOAL := release
 
+all:     release
+
 release: TARGET = release
 release: build
 

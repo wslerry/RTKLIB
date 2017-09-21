@@ -14,6 +14,8 @@ RELOPTS    = -O3 -DNDEBUG
 PRERELOPTS = -O3
 DBGOPTS    = -O0
 
+all:     release
+
 release: CFLAGS  = $(CFLAGS_CMN) $(RELOPTS)
 release: EXEC    = pos2kml
 release: OBJ_DIR = ./release
