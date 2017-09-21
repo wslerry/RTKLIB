@@ -3,17 +3,10 @@
 BINDIR  = /usr/local/bin
 SRC     = ../../../src
 
-#OPTS    = -DTRACE -DENAGLO -DENAQZS -DENAGAL -DENACMP -DENAIRN -DNFREQ=3
-OPTS    = -DTRACE -DENAGLO -DENAQZS -DENAGAL -DENACMP -DENAIRN -DNFREQ=3 -DIERS_MODEL
-#OPTS    = -DENAGLO -DENAQZS -DENAGAL -DENACMP -DNFREQ=2
-
+OPTIONS    = -DTRACE -DENAGLO -DENAQZS -DENAGAL -DENACMP -DENAIRN -DNFREQ=3 -DIERS_MODEL
 # for no lapack
-CFLAGS  = -Wall -O3 -fno-strict-overflow -ansi -pedantic -Wno-unused-but-set-variable -I$(SRC) $(OPTS) -g
-#LDLIBS  = -lm -lrt -lpthread
+CFLAGS_CMN = -Wall -fno-strict-overflow -ansi -pedantic -Wno-unused-but-set-variable -I$(SRC) $(OPTIONS) -g
 LDLIBS  = ../../../lib/iers/gcc/iers.a -lgfortran -lm -lrt -lpthread
-
-#CFLAGS  = -Wall -O3 -ansi -pedantic -Wno-unused-but-set-variable -I$(SRC) -DLAPACK $(OPTS)
-#LDLIBS  = -lm -lrt -llapack -lblas
 
 # for gprof
 #CFLAGS  = -Wall -O3 -ansi -pedantic -Wno-unused-but-set-variable -I$(SRC) -DLAPACK $(OPTS) -pg
@@ -25,91 +18,118 @@ LDLIBS  = ../../../lib/iers/gcc/iers.a -lgfortran -lm -lrt -lpthread
 #CFLAGS  = -O3 -ansi -pedantic -Wno-unused-but-set-variable -I$(SRC) $(OPTS) -DMKL
 #LDLIBS  = -L$(MKLDIR)/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_gnu_thread -lpthread -lgomp -lm -lrt
 
-all        : rnx2rtkp
-rnx2rtkp   : rnx2rtkp.o rtkcmn.o rinex.o rtkpos.o postpos.o erb.o solution.o
-rnx2rtkp   : stream.o rcvraw.o novatel.o ss2.o ublox.o crescent.o skytraq.o gw10.o
-rnx2rtkp   : javad.o nvs.o binex.o rt17.o tersus.o septentrio.o cmr.o
-rnx2rtkp   : lambda.o geoid.o sbas.o preceph.o pntpos.o ephemeris.o options.o
-rnx2rtkp   : ppp.o ppp_ar.o ppp_corr.o rtcm.o rtcm2.o rtcm3.o rtcm3e.o ionex.o tides.o qzslex.o
+OBJS = rnx2rtkp.o rtkcmn.o rinex.o rtkpos.o postpos.o erb.o solution.o \
+    stream.o rcvraw.o novatel.o ss2.o ublox.o crescent.o skytraq.o gw10.o \
+    javad.o nvs.o binex.o rt17.o tersus.o septentrio.o cmr.o \
+    lambda.o geoid.o sbas.o preceph.o pntpos.o ephemeris.o options.o \
+    ppp.o ppp_ar.o ppp_corr.o rtcm.o rtcm2.o rtcm3.o rtcm3e.o ionex.o tides.o qzslex.o \
+    
+.DEFAULT_GOAL := release
+.PHONY: mkdir
+
+RELOPTS    = -O3 -DNDEBUG
+PRERELOPTS = -O3
+DBGOPTS    = -O0
+
+release: CFLAGS  = $(CFLAGS_CMN) $(RELOPTS)
+release: EXEC    = rnx2rtkp
+release: OBJ_DIR = ./release
+release: build
+
+prerelease: CFLAGS  = $(CFLAGS_CMN) $(PRERELOPTS)
+prerelease: EXEC    = rnx2rtkp_prerel
+prerelease: OBJ_DIR = ./prerelease
+prerelease: build
+
+debug: CFLAGS  = $(CFLAGS_CMN) $(DBGOPTS)
+debug: EXEC    = rnx2rtkp_dbg
+debug: OBJ_DIR = ./debug
+debug: build
+
+build: mkdir $(OBJS)
+	$(CC) -o $(EXEC) $(OBJS:%.o=$(OBJ_DIR)/%.o) $(LDLIBS)
+
+mkdir: 
+	mkdir -p $(OBJ_DIR)
 
 rnx2rtkp.o : ../rnx2rtkp.c
-	$(CC) -c $(CFLAGS) ../rnx2rtkp.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) ../rnx2rtkp.c
 rtkcmn.o   : $(SRC)/rtkcmn.c
-	$(CC) -c $(CFLAGS) $(SRC)/rtkcmn.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rtkcmn.c
 rinex.o    : $(SRC)/rinex.c
-	$(CC) -c $(CFLAGS) $(SRC)/rinex.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rinex.c
 rtkpos.o   : $(SRC)/rtkpos.c
-	$(CC) -c $(CFLAGS) $(SRC)/rtkpos.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rtkpos.c
 postpos.o  : $(SRC)/postpos.c
-	$(CC) -c $(CFLAGS) $(SRC)/postpos.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/postpos.c
 erb.o      : $(SRC)/erb.c
-	$(CC) -c $(CFLAGS) $(SRC)/erb.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/erb.c
 solution.o : $(SRC)/solution.c
-	$(CC) -c $(CFLAGS) $(SRC)/solution.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/solution.c
 stream.o   : $(SRC)/stream.c
-	$(CC) -c $(CFLAGS) $(SRC)/stream.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/stream.c
 novatel.o  : $(SRC)/rcv/novatel.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/novatel.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/novatel.c
 ss2.o      : $(SRC)/rcv/ss2.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/ss2.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/ss2.c
 ublox.o    : $(SRC)/rcv/ublox.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/ublox.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/ublox.c
 crescent.o : $(SRC)/rcv/crescent.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/crescent.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/crescent.c
 skytraq.o  : $(SRC)/rcv/skytraq.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/skytraq.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/skytraq.c
 gw10.o     : $(SRC)/rcv/gw10.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/gw10.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/gw10.c
 javad.o    : $(SRC)/rcv/javad.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/javad.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/javad.c
 nvs.o      : $(SRC)/rcv/nvs.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/nvs.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/nvs.c
 binex.o    : $(SRC)/rcv/binex.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/binex.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/binex.c
 rt17.o     : $(SRC)/rcv/rt17.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/rt17.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/rt17.c
 tersus.o     : $(SRC)/rcv/tersus.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/tersus.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/tersus.c
 septentrio.o: $(SRC)/rcv/septentrio.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/septentrio.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/septentrio.c
 cmr.o      : $(SRC)/rcv/cmr.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcv/cmr.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcv/cmr.c
 rcvraw.o   : $(SRC)/rcvraw.c
-	$(CC) -c $(CFLAGS) $(SRC)/rcvraw.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rcvraw.c
 lambda.o   : $(SRC)/lambda.c
-	$(CC) -c $(CFLAGS) $(SRC)/lambda.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/lambda.c
 geoid.o    : $(SRC)/geoid.c
-	$(CC) -c $(CFLAGS) $(SRC)/geoid.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/geoid.c
 sbas.o     : $(SRC)/sbas.c
-	$(CC) -c $(CFLAGS) $(SRC)/sbas.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/sbas.c
 preceph.o  : $(SRC)/preceph.c
-	$(CC) -c $(CFLAGS) $(SRC)/preceph.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/preceph.c
 pntpos.o   : $(SRC)/pntpos.c
-	$(CC) -c $(CFLAGS) $(SRC)/pntpos.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/pntpos.c
 ephemeris.o: $(SRC)/ephemeris.c
-	$(CC) -c $(CFLAGS) $(SRC)/ephemeris.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/ephemeris.c
 options.o  : $(SRC)/options.c
-	$(CC) -c $(CFLAGS) $(SRC)/options.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/options.c
 ppp.o      : $(SRC)/ppp.c
-	$(CC) -c $(CFLAGS) $(SRC)/ppp.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/ppp.c
 ppp_ar.o   : $(SRC)/ppp_ar.c
-	$(CC) -c $(CFLAGS) $(SRC)/ppp_ar.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/ppp_ar.c
 ppp_corr.o : $(SRC)/ppp_corr.c
-	$(CC) -c $(CFLAGS) $(SRC)/ppp_corr.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/ppp_corr.c
 rtcm.o     : $(SRC)/rtcm.c
-	$(CC) -c $(CFLAGS) $(SRC)/rtcm.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rtcm.c
 rtcm2.o    : $(SRC)/rtcm2.c
-	$(CC) -c $(CFLAGS) $(SRC)/rtcm2.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rtcm2.c
 rtcm3.o    : $(SRC)/rtcm3.c
-	$(CC) -c $(CFLAGS) $(SRC)/rtcm3.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rtcm3.c
 rtcm3e.o   : $(SRC)/rtcm3e.c
-	$(CC) -c $(CFLAGS) $(SRC)/rtcm3e.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/rtcm3e.c
 ionex.o    : $(SRC)/ionex.c
-	$(CC) -c $(CFLAGS) $(SRC)/ionex.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/ionex.c
 tides.o    : $(SRC)/tides.c
-	$(CC) -c $(CFLAGS) $(SRC)/tides.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/tides.c
 qzslex.o   : $(SRC)/qzslex.c
-	$(CC) -c $(CFLAGS) $(SRC)/qzslex.c
+	$(CC) -o $(OBJ_DIR)/$@ -c $(CFLAGS) $(SRC)/qzslex.c
 
 rnx2rtkp.o : $(SRC)/rtklib.h
 rtkcmn.o   : $(SRC)/rtklib.h
@@ -135,7 +155,7 @@ ionex.o    : $(SRC)/rtklib.h
 tides.o    : $(SRC)/rtklib.h
 qzslex.o   : $(SRC)/rtklib.h
 
-CMD1    = ./rnx2rtkp
+CMD1    = $(EXEC)
 INPUT11 = ../../../test/data/rinex/07590920.05o ../../../test/data/rinex/30400920.05n
 INPUT12 = ../../../test/data/rinex/30400920.05o
 OPTS1   = -r -3978241.958 3382840.234 3649900.853
@@ -196,7 +216,8 @@ test25 :
 	$(CMD1) -k opts4.conf $(INPUT11) $(INPUT12) -y 2 -o test25.pos
 
 clean :
-	rm -f rnx2rtkp rnx2rtkp.exe *.o *.pos *.trace
+	rm -f rnx2rtkp rnx2rtkp_prerel rnx2rtkp_dbg *.o *.pos *.trace
+	rm -rf ./release ./prerelease ./debug
 
 prof :
 	gprof rnx2rtkp > prof.txt
