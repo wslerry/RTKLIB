@@ -911,7 +911,7 @@ static void *rtksvrthread(void *arg)
     unsigned char *p,*q;
     char msg[128];
     int i,j,n,fobs[3]={0},cycle,cputime;
-    gtime_t time_base, time_rover;
+    gtime_t time_base, time_rover, time_last;
     double maxage = svr->rtk.opt.maxtdiff;
     int    navsys = svr->rtk.opt.navsys; 
 
@@ -992,9 +992,14 @@ static void *rtksvrthread(void *arg)
         if ( (fobs[1] > 0) && (svr->rtk.opt.base_multi_epoch) ) {
             
             obs_queue_add(svr->base_queue, &svr->obs[1][0], fobs[1]);
+            
             if ( fobs[0] <= 0 ) { /* no rover data */
-                time_base = obs_get_time(&svr->obs[1][fobs[1]-1]);
-                obs_queue_get_projection(svr->base_queue, &svr->obs[1][0], navsys, time_base, maxage);
+                
+                if ( svr->obs[0][0].n > 0 ) time_rover = obs_get_time(&svr->obs[0][0]);
+                else { time_rover.time = 0; time_rover.sec = 0.0; }
+                time_base  = obs_get_time(&svr->obs[1][fobs[1]-1]);
+                time_last  = ( timediff(time_rover, time_base) > 0.0 ) ? time_rover : time_base;
+                obs_queue_get_projection(svr->base_queue, &svr->obs[1][0], navsys, time_last, maxage);
             }
         }
         
