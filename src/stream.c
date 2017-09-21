@@ -330,7 +330,7 @@ static DWORD WINAPI serialthread(void *arg)
 static serial_t *openserial(const char *path, int mode, char *msg)
 {
     const int br[]={
-        300,600,1200,2400,4800,9600,19200,38400,57600,115200,230400
+        300,600,1200,2400,4800,9600,19200,38400,57600,115200,230400,460800
     };
     serial_t *serial;
     int i,brate=9600,bsize=8,stopb=1,tcp_port=0;
@@ -342,7 +342,7 @@ static serial_t *openserial(const char *path, int mode, char *msg)
     char dcb[64]="";
 #else
     const speed_t bs[]={
-        B300,B600,B1200,B2400,B4800,B9600,B19200,B38400,B57600,B115200,B230400
+        B300,B600,B1200,B2400,B4800,B9600,B19200,B38400,B57600,B115200,B230400,B460800
     };
     struct termios ios={0};
     int rw=0;
@@ -481,6 +481,15 @@ static void closeserial(serial_t *serial)
     }
     free(serial);
 }
+/* close serial and update stream state if fd is failed ---------------------*/
+static void closeserial_failed_fd(stream_t *stream) 
+{
+    if (!stream || !(stream->port)) return;
+
+    closeserial((serial_t *)stream->port);
+    stream->port = NULL;
+    stream->state = -1;
+}
 /* read serial ---------------------------------------------------------------*/
 static int readserial(serial_t *serial, unsigned char *buff, int n, char *msg)
 {
@@ -516,9 +525,9 @@ static int writeserial(serial_t *serial, unsigned char *buff, int n, char *msg)
 #ifdef WIN32
     if ((ns=writeseribuff(serial,buff,n))<n) serial->error=1;
 #else
-    if (write(serial->dev,buff,n)<0) {
+    if ((ns=write(serial->dev,buff,n))<n) {
         serial->error=1;
-        ns=0;
+        ns=-1;
     }
 #endif
     tracet(5,"writeserial: exit dev=%d ns=%d\n",serial->dev,ns);
@@ -542,9 +551,7 @@ static int checkfd(stream_t *stream)
     fstat((int)serial->dev, &sb);
     if (sb.st_nlink == 0) {
         /* no hard links */
-        closeserial(serial);
-        stream->port=NULL;
-        stream->state=-1;
+        closeserial_failed_fd(stream);
         return 0;
     }
     return 1;
@@ -865,6 +872,7 @@ static int readfile(file_t *file, unsigned char *buff, int nmax, char *msg)
             sprintf(msg,"end");
             return 0;
         }
+        if (!file->repmode) tick_master=tick;
         fpos=(size_t)fpos_buff[0];
         if (file->size_fpos==8&&sizeof(size_t)==8) {
             fpos+=((size_t)fpos_buff[1]<<32);
@@ -2939,8 +2947,9 @@ extern int strread(stream_t *stream, unsigned char *buff, int n)
     if (stream->state == -1) {
         /* Try to open serial port */
         stream->port=openserial(stream->path,stream->mode,stream->msg);
-        stream->state=!stream->port?-1:1;
-        return 0;
+        if (!stream->port) 
+            return 0;
+        stream->state=1;
     }
     if (!checkfd(stream)) {
         return 0;
@@ -2995,8 +3004,9 @@ extern int strwrite(stream_t *stream, unsigned char *buff, int n)
     if (stream->state == -1) {
         /* Try to open serial port */
         stream->port=openserial(stream->path,stream->mode,stream->msg);
-        stream->state=!stream->port?-1:1;
-        return 0;
+        if (!stream->port) 
+            return 0;
+        stream->state=1;
     }
     if (!checkfd(stream)) {
         return 0;
@@ -3021,6 +3031,14 @@ extern int strwrite(stream_t *stream, unsigned char *buff, int n)
             strunlock(stream);
             return 0;
     }
+    if (ns < 0) {
+        if (stream->type == STR_SERIAL) {
+            strunlock(stream);
+            closeserial_failed_fd(stream);
+        }
+        return 0;
+    }
+
     stream->outb+=ns;
     tick=tickget(); if (ns>0) stream->tact=tick;
     
