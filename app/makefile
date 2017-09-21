@@ -2,11 +2,26 @@
 # make all cui applications by gcc
 #
 
-BINDIR = /usr/local/bin
-DIRS   = ../lib/iers pos2kml str2str rnx2rtkp convbin rtkrcv
+BINDIR   = /usr/local/bin
+IERS_DIR = ../lib/iers
+DIRS     = pos2kml str2str rnx2rtkp convbin rtkrcv
 
-all:
-	@for i in $(DIRS); do $(MAKE) -C $$i/gcc; done
+.DEFAULT_GOAL := release
+
+all:     release
+
+release: TARGET = release
+release: build
+
+prerelease: TARGET = prerelease
+prerelease: build
+
+debug: TARGET = debug
+debug: build
+
+build:
+	@$(MAKE) -C $(IERS_DIR)/gcc
+	@for i in $(DIRS); do $(MAKE) $(TARGET) -C $$i/gcc; done
 
 install:
 	@echo installing...
@@ -14,5 +29,5 @@ install:
 
 clean:
 	@echo cleaning up...
-	@for i in $(DIRS); do $(MAKE) -C $$i/gcc clean; done
+	@for i in $(DIRS) $(IERS_DIR); do $(MAKE) -C $$i/gcc clean; done
 
