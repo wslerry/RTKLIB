@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "debug rtkrcv",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceRoot}/app/rtkrcv/gcc/rtkrcv_dbg",
+            "args": ["-o", "../rtk.conf", "-s", "-p", "30111"],
+            "stopAtEntry": true,
+            "cwd": "${workspaceRoot}/app/rtkrcv/gcc",
+            "environment": [],
+            "MIMode": "gdb",
+            "preLaunchTask": "rtkrcv debug build",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

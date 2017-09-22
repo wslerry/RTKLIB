@@ -1,0 +1,69 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "taskName": "all",
+            "command": "bash -c 'cd ${workspaceRoot}/app && make'",
+            "args": ["-j `nproc`"],
+            "type": "shell",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "taskName": "rtkrcv",
+            "command": "bash -c 'cd ${workspaceRoot}/app/rtkrcv/gcc &&  make'",
+            "args": ["-j `nproc`"],
+            "type": "shell",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "taskName": "rtkrcv debug build",
+            "command": "bash -c 'cd ${workspaceRoot}/app/rtkrcv/gcc && make debug'",
+            "args": ["-j `nproc`"],
+            "type": "shell",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "taskName": "rnx2rtkp",
+            "command": "bash -c 'cd ${workspaceRoot}/app/rnx2rtkp/gcc &&  make'",
+            "args": ["-j `nproc`"],
+            "type": "shell",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "taskName": "str2str",
+            "command": "bash -c 'cd ${workspaceRoot}/app/str2str/gcc &&  make'",
+            "args": ["-j `nproc`"],
+            "type": "shell",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "taskName": "convbin",
+            "command": "bash -c 'cd ${workspaceRoot}/app/convbin/gcc &&  make -j `nproc`'",
+            "type": "shell",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        }
+    ]
+}

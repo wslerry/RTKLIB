@@ -1,0 +1,24 @@
+{
+    "files.associations": {
+        "rtklib.h": "c",
+        "object.h": "c",
+        "vt.h": "c",
+        "f2c.h": "c",
+        "ptr_traits.h": "c",
+        "type_traits": "c",
+        "curses.h": "c",
+        "python-ast.h": "c",
+        "structmember.h": "c",
+        "term.h": "c",
+        "parsetok.h": "c",
+        "plotmain.h": "c",
+        "postmain.h": "c",
+        "unistd.h": "c",
+        "mondlg.h": "c",
+        "fileoptdlg.cpp": "c",
+        "string.h": "c",
+        "datetime.h": "c",
+        "stat.h": "c",
+        "time.h": "c"
+    }
+}
