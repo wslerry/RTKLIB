@@ -529,14 +529,16 @@ static void navsys_convert_binary_to_array(int sys_binary, int *sys_array, int *
     assert( sys_array != NULL );
     assert( nsys != NULL );
     
-    if ( sys_binary & SYS_GPS ) { sys_array[*nsys] = SYS_GPS; (*nsys)++; }
+    /* unite GPS, QZSS and SBAS satellite groups since they are considered as one group in rtkpos */
+    if ( sys_binary & (SYS_GPS | SYS_QZS | SYS_SBS) ) { sys_array[*nsys] = (SYS_GPS | SYS_QZS | SYS_SBS); (*nsys)++; }
+    
+    /* other systems are single */
     if ( sys_binary & SYS_GLO ) { sys_array[*nsys] = SYS_GLO; (*nsys)++; }
     if ( sys_binary & SYS_GAL ) { sys_array[*nsys] = SYS_GAL; (*nsys)++; }
     if ( sys_binary & SYS_QZS ) { sys_array[*nsys] = SYS_QZS; (*nsys)++; }
     if ( sys_binary & SYS_CMP ) { sys_array[*nsys] = SYS_CMP; (*nsys)++; }
     if ( sys_binary & SYS_IRN ) { sys_array[*nsys] = SYS_IRN; (*nsys)++; }
     if ( sys_binary & SYS_LEO ) { sys_array[*nsys] = SYS_LEO; (*nsys)++; }
-    if ( sys_binary & SYS_SBS ) { sys_array[*nsys] = SYS_SBS; (*nsys)++; }
     
     assert( *nsys <= MAXSYS );
 }
@@ -610,7 +612,7 @@ static int obs_test_sys(const obs_t *obs, int sys)
     assert( obs_is_valid(obs) );
     
     for (i = 0; i < obs->n; i++) {
-        if ( satsys(obs->data[i].sat, NULL) == sys ) return 1;
+        if ( satsys(obs->data[i].sat, NULL) & sys ) return 1;
     }
 
     return 0;
@@ -628,7 +630,7 @@ static void obs_copy_sys(const obs_t *obs_source, obs_t *obs_destination, int sy
     data = obs_destination->data;
     *obs_destination = *obs_source;
     for (i = j = 0; i < obs_source->n; i++) { 
-        if ( satsys(obs_source->data[i].sat, NULL) == sys ) {
+        if ( satsys(obs_source->data[i].sat, NULL) & sys ) {
              data[j] = obs_source->data[i];
              j++;
         }
@@ -672,6 +674,25 @@ static int obs_get_number_of_good_sats(const obs_t *obs)
     }
     
     return nsat;
+}
+
+static int obs_compare_data_by_sat(const void *obs_data_1, const void *obs_data_2)
+{
+    obsd_t *obsd1 = (obsd_t *) obs_data_1;
+    obsd_t *obsd2 = (obsd_t *) obs_data_2;
+    
+    return (int) (obsd1->sat) - (int) (obsd2->sat);
+}
+
+
+static int obs_sort_data_by_sat(obs_t *obs)
+{
+    assert( obs_is_valid(obs) );
+    
+    if (obs->n <= 0) return 0;
+    qsort(obs->data, obs->n, sizeof(obsd_t), obs_compare_data_by_sat);
+    
+    return 1;
 }
 
 /* obs queue manipulation functions ---------------------------------------*/
@@ -889,6 +910,8 @@ static void obs_queue_get_projection(obs_queue_t *obs_queue, obs_t *obs_destinat
     
         obs_append(obs_destination, obs_sys);
     }
+    
+    obs_sort_data_by_sat(obs_destination);
     
     obs_free(obs_sys);
 }
