@@ -23,7 +23,6 @@ SRC_NAMES    := $(SRC_NAMES_APP) $(SRC_NAMES_1) $(SRC_NAMES_2)
 OBJ_NAMES    := $(SRC_NAMES:%.c=%.o)
 
 # common compile options
-CC := gcc
 INCLUDE := -I$(SRC_DIR_1)
 OPTIONS := -DTRACE -DENAGLO -DENAQZS -DENAGAL -DENACMP -DENAIRN -DNFREQ=3
 CFLAGS_CMN := -ansi -pedantic -Wall -Wno-unused-but-set-variable -fno-strict-overflow -Werror -Wno-error=unused-function $(INCLUDE) $(OPTIONS) -g
