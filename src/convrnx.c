@@ -836,13 +836,16 @@ static void closefile(FILE **ofp, const rnxopt_t *opt, nav_t *nav)
 static void outrnxevent(FILE *fp, rnxopt_t *opt, int staid, stas_t *stas)
 {
     stas_t *p;
-    double pos[3],enu[3],del[3];
+    double pos[3]={0};
+    double enu[3]={0};
+    double del[3]={0};
     
     trace(2,"outrnxevent: staid=%d\n",staid);
-    
+
     for (p=stas;p;p=p->next) {
         if (p->staid==staid) break;
     }
+
     fprintf(fp,"%31s%d%3d\n","",3,p?6:2); /* new site occupation event */
     fprintf(fp,"station ID: %4d%44s%-20s\n",staid,"","COMMENT");
     fprintf(fp,"%-60s%-20s\n",opt->marker,"MARKER NAME");
