@@ -28,7 +28,7 @@ OBJ_NAMES    := $(SRC_NAMES:%.c=%.o)
 CC := gcc
 INCLUDE := -I$(SRC_DIR_1) -I$(SRC_DIR_APP)
 OPTIONS := -DTRACE -DENAGLO -DENAQZS -DENAGAL -DENACMP -DENAIRN -DNFREQ=3 -DSVR_REUSEADDR
-CFLAGS_CMN := -ansi -pedantic -Wall -Wno-unused-but-set-variable -fno-strict-overflow $(INCLUDE) $(OPTIONS) -g
+CFLAGS_CMN := -ansi -pedantic -Wall -Wno-unused-but-set-variable -fno-strict-overflow -Werror -Wno-error=unused-function $(INCLUDE) $(OPTIONS) -g
 LDLIBS  := -lm -lrt -lpthread
 EXEC    := rtkrcv
 

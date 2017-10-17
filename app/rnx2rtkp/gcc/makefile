@@ -28,7 +28,7 @@ OBJ_NAMES    := $(SRC_NAMES:%.c=%.o)
 CC := gcc
 INCLUDE := -I$(SRC_DIR_1)
 OPTIONS := -DTRACE -DENAGLO -DENAQZS -DENAGAL -DENACMP -DENAIRN -DNFREQ=3 -DIERS_MODEL
-CFLAGS_CMN := -ansi -pedantic -Wall -Wno-unused-but-set-variable -fno-strict-overflow $(INCLUDE) $(OPTIONS) -g
+CFLAGS_CMN := -ansi -pedantic -Wall -Wno-unused-but-set-variable -fno-strict-overflow -Werror -Wno-error=unused-function $(INCLUDE) $(OPTIONS) -g
 LDLIBS  := ../../../lib/iers/gcc/iers.a -lgfortran -lm -lrt -lpthread
 EXEC    := rnx2rtkp
 
