@@ -543,6 +543,26 @@ static int decode_rawsbasframeb(raw_t *raw)
     /* format same as rawwaasframeb */
     return decode_rawwaasframeb(raw);
 }
+/* decode rawalmb -------------------------------------------------------------*/
+static int decode_rawalmb(raw_t *raw) 
+{
+    int week, secs, n_subframes, svid;
+    int i;
+    unsigned char *p=raw->buff+OEM4HLEN;
+    
+    trace(3,"decode_rawalmb: len=%d\n",raw->len);
+
+    week = U4(p);       p += 4;
+    secs = U4(p);       p += 4;
+    n_subframes = U4(p);p += 4;
+    svid = U2(p);       p += 2;
+    
+    for (i = 0; i < n_subframes; i++) {
+        decode_frame(p, NULL, raw->nav.alm, NULL, NULL, NULL); 
+        p += 32;
+    }  
+    return 0;
+}
 /* decode gloephemerisb ------------------------------------------------------*/
 static int decode_gloephemerisb(raw_t *raw)
 {
@@ -1308,6 +1328,7 @@ static int decode_oem4(raw_t *raw)
         case ID_RAWEPHEM      : return decode_rawephemb      (raw);
         case ID_RAWWAASFRAME  : return decode_rawwaasframeb  (raw);
         case ID_RAWSBASFRAME  : return decode_rawsbasframeb  (raw);
+        case ID_RAWALM        : return decode_rawalmb        (raw);
         case ID_IONUTC        : return decode_ionutcb        (raw);
         case ID_GLOEPHEMERIS  : return decode_gloephemerisb  (raw);
         case ID_QZSSRAWEPHEM  : return decode_qzssrawephemb  (raw);
