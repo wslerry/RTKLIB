@@ -478,6 +478,7 @@ static void closeserial(serial_t *serial)
     CloseHandle(serial->dev);
     CloseHandle(serial->thread);
 #else
+    tcflush(serial->dev,TCIOFLUSH);
     close(serial->dev);
 #endif
     if (serial->tcpsvr) {
