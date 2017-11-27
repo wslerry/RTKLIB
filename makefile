@@ -34,7 +34,7 @@ OBJ_NAMES =$(patsubst %.c,%.o,$(SRC_NAMES))
 # common compile options
 INCLUDE := -I$(SRC_DIR_1)
 OPTIONS	   = -DTRACE -DENAGLO -DENAQZS -DENAGAL -DENACMP -DENAIRN -DNFREQ=3 -DSVR_REUSEADDR
-CFLAGS_CMN = -ansi -pedantic -Wall -fpic -fno-strict-overflow \
+CFLAGS_CMN = -std=c99 -pedantic -Wall -fpic -fno-strict-overflow \
 			   $(INCLUDE) $(OPTIONS) -g
 LDLIBS	   = lib/iers/gcc/iers.a -lgfortran -lm -lrt -lpthread
 LDFLAGS    = -shared
@@ -183,6 +183,7 @@ mkdir:
 			  $(addsuffix /app, $(REL_DIR) $(PREREL_DIR) $(DBG_DIR)) 
 install:
 	cp $(REL_LIB) $(BINDIR)
+	cp $(addprefix $(REL_DIR)/, $(APPS)) /usr/bin
 	
 
 clean:
