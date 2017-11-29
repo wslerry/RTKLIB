@@ -258,7 +258,7 @@ extern "C" {
 #define MAXSTRPATH  1024                /* max length of stream path */
 #define MAXSTRMSG   1024                /* max length of stream message */
 
-#ifdef WIN32
+#if defined(WIN32) | defined(QT)
 #define MAXSTRRTK   8                   /* max number of stream in RTK server */
 #define MAXSOLRTK   2                   /* max number of solution streams in RTK server */
 #else
@@ -286,6 +286,7 @@ extern "C" {
 #define RNX2VER     2.10                /* RINEX ver.2 default output version */
 #define RNX3VER     3.00                /* RINEX ver.3 default output version */
 
+#define NOUTFILE    9                   /* number of output files for rinex conversion */
 #define OBSTYPE_PR  0x01                /* observation type: pseudorange */
 #define OBSTYPE_CP  0x02                /* observation type: carrier-phase */
 #define OBSTYPE_DOP 0x04                /* observation type: doppler-freq */
