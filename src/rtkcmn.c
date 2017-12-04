@@ -196,14 +196,17 @@ const double lam_carr[MAXFREQ]={ /* carrier wave length (m) */
     CLIGHT/FREQ8,CLIGHT/FREQ9
 };
 const prcopt_t prcopt_default={ /* defaults processing options */
-    PMODE_SINGLE,0,2,SYS_GPS,   /* mode,soltype,nf,navsys */
-    15.0*D2R,{{0,0}},           /* elmin,snrmask */
-    0,1,1,1,1,0,                /* sateph,modear,glomodear,gpsmodear,bdsmodear,arfilter */
-    5,0,2,2,20,10,              /* maxout,minlock,minfixsats,minholdsats,mindropsats,minfix */
-    0,1,0,0,0,0,                /* rcvstds,armaxiter,estion,esttrop,dynamics,tidecorr */
+    .mode=PMODE_KINEMA, .soltype=0,     .nf=1,
+    .navsys=SYS_ALL,    .elmin=15.0*D2R,
+    .snrmask= {.ena={0, 1}, .mask[0]={35.,35.,35.,35.,35.,35.,35.,35.,35.}},
+    .sateph=0,          .modear=3,      .glomodear=0, 
+    .gpsmodear=3,       .bdsmodear=0,   .arfilter=0,           
+    .maxout=5,          .minlock=0,     .minfixsats=2,
+    2,20,10,              /* maxout,minlock,minfixsats,minholdsats,mindropsats,minfix */
+    0,1,0,0,1,0,                /* rcvstds,armaxiter,estion,esttrop,dynamics,tidecorr */
     1,0,0,0,0,                  /* niter,codesmooth,intpref,sbascorr,sbassatsel */
-    0,0,                        /* rovpos,refpos */
-    {100.0,100.0},              /* eratio[] */
+    0,3,                        /* rovpos,refpos */
+    {300.0,100.0},              /* eratio[] */
     {100.0,0.003,0.003,0.0,1.0}, /* err[] */
 
     0, 100, 0.2,                /* smooth-mode, smooth-window, smooth-varratio */

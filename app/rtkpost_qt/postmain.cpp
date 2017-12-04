@@ -180,14 +180,6 @@ MainForm::MainForm(QWidget *parent)
     QString file=QApplication::applicationFilePath();
     QFileInfo fi(file);
     IniFile=fi.absolutePath()+"/"+fi.baseName()+".ini";
-    
-    DynamicModel=IonoOpt=TropOpt=RovAntPcv=RefAntPcv=AmbRes=0;
-    RovPosType=RefPosType=0;
-    OutCntResetAmb=5; LockCntFixAmb=5; FixCntHoldAmb=10;
-    MaxAgeDiff=30.0; RejectThres=30.0; RejectGdop=30.0;
-    MeasErrR1=MeasErrR2=100.0; MeasErr2=0.004; MeasErr3=0.003; MeasErr4=1.0;
-    SatClkStab=1E-11; ValidThresAR=3.0;
-    RovAntE=RovAntN=RovAntU=RefAntE=RefAntN=RefAntU=0.0;
 
     for (i=0;i<3;i++) RovPos[i]=0.0;
     for (i=0;i<3;i++) RefPos[i]=0.0;
@@ -1199,8 +1191,14 @@ void MainForm::UpdateEnable(void)
 // load options from ini file -----------------------------------------------
 void MainForm::LoadOpt(void)
 {
+    prcopt_t prcopt;
+    solopt_t solopt;
+    filopt_t filopt;
+    resetsysopts();
+    getsysopts(&prcopt, &solopt, 1, &filopt);
+
     QSettings ini(IniFile,QSettings::IniFormat);
-    
+
     TimeStart->setChecked(ini.value("set/timestart",   0).toBool());
     TimeEnd->setChecked(ini.value("set/timeend",     0).toBool());
     TimeY1->setDate(ini.value ("set/timey1",      "2000/01/01").toDate());
@@ -1229,107 +1227,107 @@ void MainForm::LoadOpt(void)
     ReadList(InputFile6,&ini,"hist/inputfile6");
     ReadList(OutputFile,&ini,"hist/outputfile");
     
-    PosMode            =ini.value("opt/posmode",        0).toInt();
-    Freq               =ini.value("opt/freq",           1).toInt();
-    Solution           =ini.value("opt/solution",       0).toInt();
-    ElMask             =ini.value  ("opt/elmask",      15.0).toDouble();
-    SnrMask.ena[0]     =ini.value("opt/snrmask_ena1",   0).toInt();
-    SnrMask.ena[1]     =ini.value("opt/snrmask_ena2",   0).toInt();
+    PosMode            =ini.value("opt/posmode",        prcopt.mode).toInt();
+    Freq               =ini.value("opt/freq",           prcopt.nf).toInt() - 1;
+    Solution           =ini.value("opt/solution",       prcopt.soltype).toInt();
+    ElMask             =ini.value("opt/elmask",         prcopt.elmin).toDouble() * R2D;
+    SnrMask.ena[0]     =ini.value("opt/snrmask_ena1",   prcopt.snrmask.ena[0]).toInt();
+    SnrMask.ena[1]     =ini.value("opt/snrmask_ena2",   prcopt.snrmask.ena[1]).toInt();
     for (int i=0;i<3;i++) for (int j=0;j<9;j++) {
         SnrMask.mask[i][j]=
-            ini.value(QString("opt/snrmask_%1_%2").arg(i+1).arg(j+1),0.0).toDouble();
+            ini.value(QString("opt/snrmask_%1_%2").arg(i+1).arg(j+1),  35).toDouble();
     }
-    IonoOpt            =ini.value("opt/ionoopt",     IONOOPT_BRDC).toInt();
-    TropOpt            =ini.value("opt/tropopt",     TROPOPT_SAAS).toInt();
+    IonoOpt            =ini.value("opt/ionoopt",        prcopt.ionoopt).toInt();
+    TropOpt            =ini.value("opt/tropopt",        prcopt.tropopt).toInt();
     RcvBiasEst         =ini.value("opt/rcvbiasest",     0).toInt();
-    DynamicModel       =ini.value("opt/dynamicmodel",   0).toInt();
-    TideCorr           =ini.value("opt/tidecorr",       0).toInt();
-    SatEphem           =ini.value("opt/satephem",       0).toInt();
-    ExSats             =ini.value ("opt/exsats",        "").toString();
-    NavSys             =ini.value("opt/navsys",   SYS_GPS).toInt();
-    PosOpt[0]          =ini.value("opt/posopt1",        0).toInt();
-    PosOpt[1]          =ini.value("opt/posopt2",        0).toInt();
-    PosOpt[2]          =ini.value("opt/posopt3",        0).toInt();
-    PosOpt[3]          =ini.value("opt/posopt4",        0).toInt();
-    PosOpt[4]          =ini.value("opt/posopt5",        0).toInt();
-    PosOpt[5]          =ini.value("opt/posopt6",        0).toInt();
+    DynamicModel       =ini.value("opt/dynamicmodel",   prcopt.dynamics).toInt();
+    TideCorr           =ini.value("opt/tidecorr",       prcopt.tidecorr).toInt();
+    SatEphem           =ini.value("opt/satephem",       prcopt.sateph).toInt();
+    ExSats             =ini.value("opt/exsats",         "").toString();
+    NavSys             =ini.value("opt/navsys",         prcopt.navsys).toInt();
+    PosOpt[0]          =ini.value("opt/posopt1",        prcopt.posopt[0]).toInt();
+    PosOpt[1]          =ini.value("opt/posopt2",        prcopt.posopt[1]).toInt();
+    PosOpt[2]          =ini.value("opt/posopt3",        prcopt.posopt[2]).toInt();
+    PosOpt[3]          =ini.value("opt/posopt4",        prcopt.posopt[3]).toInt();
+    PosOpt[4]          =ini.value("opt/posopt5",        prcopt.posopt[4]).toInt();
+    PosOpt[5]          =ini.value("opt/posopt6",        prcopt.posopt[5]).toInt();
     MapFunc            =ini.value("opt/mapfunc",        0).toInt();
     
-    AmbRes             =ini.value("opt/ambres",         1).toInt();
-    GloAmbRes          =ini.value("opt/gloambres",      1).toInt();
-    BdsAmbRes          =ini.value("opt/bdsambres",      1).toInt();
-    ValidThresAR       =ini.value  ("opt/validthresar", 3.0).toDouble();
-    ThresAR2           =ini.value  ("opt/thresar2",  0.9999).toDouble();
-    ThresAR3           =ini.value  ("opt/thresar3",    0.25).toDouble();
-    LockCntFixAmb      =ini.value("opt/lockcntfixamb",  0).toInt();
-    FixCntHoldAmb      =ini.value("opt/fixcntholdamb", 10).toInt();
-    ElMaskAR           =ini.value  ("opt/elmaskar",     0.0).toDouble();
-    ElMaskHold         =ini.value  ("opt/elmaskhold",   0.0).toDouble();
-    OutCntResetAmb     =ini.value("opt/outcntresetbias",5).toInt();
-    SlipThres          =ini.value  ("opt/slipthres",   0.05).toDouble();
-    MaxAgeDiff         =ini.value  ("opt/maxagediff",  30.0).toDouble();
-    RejectThres        =ini.value  ("opt/rejectthres", 30.0).toDouble();
-    RejectGdop         =ini.value  ("opt/rejectgdop",  30.0).toDouble();
-    ARIter             =ini.value("opt/ariter",         1).toInt();
-    NumIter            =ini.value("opt/numiter",        1).toInt();
-    CodeSmooth         =ini.value("opt/codesmooth",     0).toInt();
-    BaseLine[0]        =ini.value  ("opt/baselinelen",  0.0).toDouble();
-    BaseLine[1]        =ini.value  ("opt/baselinesig",  0.0).toDouble();
+    AmbRes             =ini.value("opt/ambres",         prcopt.modear).toInt();
+    GloAmbRes          =ini.value("opt/gloambres",      prcopt.glomodear).toInt();
+    BdsAmbRes          =ini.value("opt/bdsambres",      prcopt.bdsmodear).toInt();
+    ValidThresAR       =ini.value("opt/validthresar",   prcopt.thresar[0]).toDouble();
+    ThresAR2           =ini.value("opt/thresar2",       prcopt.thresar[1]).toDouble();
+    ThresAR3           =ini.value("opt/thresar3",       prcopt.thresar[2]).toDouble();
+    LockCntFixAmb      =ini.value("opt/lockcntfixamb",  prcopt.minlock).toInt();
+    FixCntHoldAmb      =ini.value("opt/fixcntholdamb",  prcopt.minfix).toInt();
+    ElMaskAR           =ini.value("opt/elmaskar",       prcopt.elmaskar).toDouble();
+    ElMaskHold         =ini.value("opt/elmaskhold",     prcopt.elmaskhold).toDouble();
+    OutCntResetAmb     =ini.value("opt/outcntresetbias",prcopt.maxout).toInt();
+    SlipThres          =ini.value("opt/slipthres",      prcopt.thresslip).toDouble();
+    MaxAgeDiff         =ini.value("opt/maxagediff",     prcopt.maxtdiff).toDouble();
+    RejectThres        =ini.value("opt/rejectthres",    prcopt.maxinno).toDouble();
+    RejectGdop         =ini.value("opt/rejectgdop",     prcopt.maxgdop).toDouble();
+    ARIter             =ini.value("opt/ariter",         prcopt.armaxiter).toInt();
+    NumIter            =ini.value("opt/numiter",        prcopt.niter).toInt();
+    CodeSmooth         =ini.value("opt/codesmooth",     prcopt.codesmooth).toInt();
+    BaseLine[0]        =ini.value("opt/baselinelen",    prcopt.baseline[0]).toDouble();
+    BaseLine[1]        =ini.value("opt/baselinesig",    prcopt.baseline[1]).toDouble();
     BaseLineConst      =ini.value("opt/baselineconst",  0).toInt();
     
-    SolFormat          =ini.value("opt/solformat",      0).toInt();
-    TimeFormat         =ini.value("opt/timeformat",     1).toInt();
-    TimeDecimal        =ini.value("opt/timedecimal",    3).toInt();
-    LatLonFormat       =ini.value("opt/latlonformat",   0).toInt();
-    FieldSep           =ini.value ("opt/fieldsep",      "").toString();
-    OutputHead         =ini.value("opt/outputhead",     1).toInt();
-    OutputOpt          =ini.value("opt/outputopt",      1).toInt();
-    OutputDatum        =ini.value("opt/outputdatum",    0).toInt();
-    OutputHeight       =ini.value("opt/outputheight",   0).toInt();
-    OutputGeoid        =ini.value("opt/outputgeoid",    0).toInt();
-    SolStatic          =ini.value("opt/solstatic",      0).toInt();
-    DebugTrace         =ini.value("opt/debugtrace",     0).toInt();
-    DebugStatus        =ini.value("opt/debugstatus",    0).toInt();
+    SolFormat          =ini.value("opt/solformat",      solopt.posf).toInt();
+    TimeFormat         =ini.value("opt/timeformat",     solopt.timef).toInt();
+    TimeDecimal        =ini.value("opt/timedecimal",    solopt.timeu).toInt();
+    LatLonFormat       =ini.value("opt/latlonformat",   solopt.degf).toInt();
+    FieldSep           =ini.value("opt/fieldsep",       solopt.sep).toString();
+    OutputHead         =ini.value("opt/outputhead",     solopt.outhead).toInt();
+    OutputOpt          =ini.value("opt/outputopt",      solopt.outopt).toInt();
+    OutputDatum        =ini.value("opt/outputdatum",    solopt.datum).toInt();
+    OutputHeight       =ini.value("opt/outputheight",   solopt.height).toInt();
+    OutputGeoid        =ini.value("opt/outputgeoid",    solopt.geoid).toInt();
+    SolStatic          =ini.value("opt/solstatic",      solopt.solstatic).toInt();
+    DebugTrace         =ini.value("opt/debugtrace",     solopt.trace).toInt();
+    DebugStatus        =ini.value("opt/debugstatus",    solopt.sstat).toInt();
     
-    MeasErrR1          =ini.value  ("opt/measeratio1",100.0).toDouble();
-    MeasErrR2          =ini.value  ("opt/measeratio2",100.0).toDouble();
-    MeasErr2           =ini.value  ("opt/measerr2",   0.003).toDouble();
-    MeasErr3           =ini.value  ("opt/measerr3",   0.003).toDouble();
-    MeasErr4           =ini.value  ("opt/measerr4",   0.000).toDouble();
-    MeasErr5           =ini.value  ("opt/measerr5",  10.000).toDouble();
-    SatClkStab         =ini.value  ("opt/satclkstab", 5E-12).toDouble();
-    PrNoise1           =ini.value  ("opt/prnoise1",    1E-4).toDouble();
-    PrNoise2           =ini.value  ("opt/prnoise2",    1E-3).toDouble();
-    PrNoise3           =ini.value  ("opt/prnoise3",    1E-4).toDouble();
-    PrNoise4           =ini.value  ("opt/prnoise4",    1E+1).toDouble();
-    PrNoise5           =ini.value  ("opt/prnoise5",    1E+1).toDouble();
+    MeasErrR1          =ini.value("opt/measeratio1",    prcopt.eratio[0]).toDouble();
+    MeasErrR2          =ini.value("opt/measeratio2",    prcopt.eratio[1]).toDouble();
+    MeasErr2           =ini.value("opt/measerr2",       prcopt.err[1]).toDouble();
+    MeasErr3           =ini.value("opt/measerr3",       prcopt.err[2]).toDouble();
+    MeasErr4           =ini.value("opt/measerr4",       prcopt.err[3]).toDouble();
+    MeasErr5           =ini.value("opt/measerr5",       prcopt.err[4]).toDouble();
+    SatClkStab         =ini.value("opt/satclkstab",     prcopt.sclkstab).toDouble();
+    PrNoise1           =ini.value("opt/prnoise1",       prcopt.prn[0]).toDouble();
+    PrNoise2           =ini.value("opt/prnoise2",       prcopt.prn[1]).toDouble();
+    PrNoise3           =ini.value("opt/prnoise3",       prcopt.prn[2]).toDouble();
+    PrNoise4           =ini.value("opt/prnoise4",       prcopt.prn[3]).toDouble();
+    PrNoise5           =ini.value("opt/prnoise5",       prcopt.prn[4]).toDouble();
     
-    RovPosType         =ini.value("opt/rovpostype",     0).toInt();
-    RefPosType         =ini.value("opt/refpostype",     0).toInt();
-    RovPos[0]          =ini.value  ("opt/rovpos1",      0.0).toDouble();
-    RovPos[1]          =ini.value  ("opt/rovpos2",      0.0).toDouble();
-    RovPos[2]          =ini.value  ("opt/rovpos3",      0.0).toDouble();
-    RefPos[0]          =ini.value  ("opt/refpos1",      0.0).toDouble();
-    RefPos[1]          =ini.value  ("opt/refpos2",      0.0).toDouble();
-    RefPos[2]          =ini.value  ("opt/refpos3",      0.0).toDouble();
+    RovPosType         =ini.value("opt/rovpostype",     prcopt.rovpos).toInt();
+    RefPosType         =ini.value("opt/refpostype",     prcopt.refpos).toInt() + 5;
+    RovPos[0]          =ini.value("opt/rovpos1",        prcopt.ru[0]).toDouble();
+    RovPos[1]          =ini.value("opt/rovpos2",        prcopt.ru[1]).toDouble();
+    RovPos[2]          =ini.value("opt/rovpos3",        prcopt.ru[2]).toDouble();
+    RefPos[0]          =ini.value("opt/refpos1",        prcopt.rb[0]).toDouble();
+    RefPos[1]          =ini.value("opt/refpos2",        prcopt.rb[1]).toDouble();
+    RefPos[2]          =ini.value("opt/refpos3",        prcopt.rb[2]).toDouble();
     RovAntPcv          =ini.value("opt/rovantpcv",      0).toInt();
     RefAntPcv          =ini.value("opt/refantpcv",      0).toInt();
-    RovAnt             =ini.value ("opt/rovant",        "").toString();
-    RefAnt             =ini.value ("opt/refant",        "").toString();
-    RovAntE            =ini.value  ("opt/rovante",      0.0).toDouble();
-    RovAntN            =ini.value  ("opt/rovantn",      0.0).toDouble();
-    RovAntU            =ini.value  ("opt/rovantu",      0.0).toDouble();
-    RefAntE            =ini.value  ("opt/refante",      0.0).toDouble();
-    RefAntN            =ini.value  ("opt/refantn",      0.0).toDouble();
-    RefAntU            =ini.value  ("opt/refantu",      0.0).toDouble();
+    RovAnt             =ini.value("opt/rovant",         prcopt.anttype[0]).toString();
+    RefAnt             =ini.value("opt/refant",         prcopt.anttype[1]).toString();
+    RovAntE            =ini.value("opt/rovante",        prcopt.antdel[0][0]).toDouble();
+    RovAntN            =ini.value("opt/rovantn",        prcopt.antdel[0][1]).toDouble();
+    RovAntU            =ini.value("opt/rovantu",        prcopt.antdel[0][2]).toDouble();
+    RefAntE            =ini.value("opt/refante",        prcopt.antdel[1][0]).toDouble();
+    RefAntN            =ini.value("opt/refantn",        prcopt.antdel[1][1]).toDouble();
+    RefAntU            =ini.value("opt/refantu",        prcopt.antdel[1][2]).toDouble();
     
-    RnxOpts1           =ini.value ("opt/rnxopts1",      "").toString();
-    RnxOpts2           =ini.value ("opt/rnxopts2",      "").toString();
-    PPPOpts            =ini.value ("opt/pppopts",       "").toString();
+    RnxOpts1           =ini.value("opt/rnxopts1",       prcopt.rnxopt[0]).toString();
+    RnxOpts2           =ini.value("opt/rnxopts2",       prcopt.rnxopt[1]).toString();
+    PPPOpts            =ini.value("opt/pppopts",        prcopt.pppopt).toString();
     
-    AntPcvFile         =ini.value ("opt/antpcvfile",    "").toString();
-    IntpRefObs         =ini.value("opt/intprefobs",     0).toInt();
-    SbasSat            =ini.value("opt/sbassat",        0).toInt();
+    AntPcvFile         =ini.value("opt/antpcvfile",     filopt.rcvantp).toString();
+    IntpRefObs         =ini.value("opt/intprefobs",     prcopt.intpref).toInt();
+    SbasSat            =ini.value("opt/sbassat",        prcopt.sbassatsel).toInt();
     NetRSCorr          =ini.value("opt/netrscorr",      0).toInt();
     SatClkCorr         =ini.value("opt/satclkcorr",     0).toInt();
     SbasCorr           =ini.value("opt/sbascorr",       0).toInt();
@@ -1337,16 +1335,16 @@ void MainForm::LoadOpt(void)
     SbasCorr2          =ini.value("opt/sbascorr2",      0).toInt();
     SbasCorr3          =ini.value("opt/sbascorr3",      0).toInt();
     SbasCorr4          =ini.value("opt/sbascorr4",      0).toInt();
-    SbasCorrFile       =ini.value ("opt/sbascorrfile",  "").toString();
-    PrecEphFile        =ini.value ("opt/precephfile",   "").toString();
-    SatPcvFile         =ini.value ("opt/satpcvfile",    "").toString();
-    StaPosFile         =ini.value ("opt/staposfile",    "").toString();
-    GeoidDataFile      =ini.value ("opt/geoiddatafile", "").toString();
-    IonoFile           =ini.value ("opt/ionofile",      "").toString();
-    EOPFile            =ini.value ("opt/eopfile",       "").toString();
-    DCBFile            =ini.value ("opt/dcbfile",       "").toString();
-    BLQFile            =ini.value ("opt/blqfile",       "").toString();
-    GoogleEarthFile    =ini.value ("opt/googleearthfile",GOOGLE_EARTH).toString();
+    SbasCorrFile       =ini.value("opt/sbascorrfile",   "").toString();
+    PrecEphFile        =ini.value("opt/precephfile",    "").toString();
+    SatPcvFile         =ini.value("opt/satpcvfile",     filopt.satantp).toString();
+    StaPosFile         =ini.value("opt/staposfile",     filopt.stapos).toString();
+    GeoidDataFile      =ini.value("opt/geoiddatafile",  filopt.geoid).toString();
+    IonoFile           =ini.value("opt/ionofile",       filopt.iono).toString();
+    EOPFile            =ini.value("opt/eopfile",        filopt.eop).toString();
+    DCBFile            =ini.value("opt/dcbfile",        filopt.dcb).toString();
+    BLQFile            =ini.value("opt/blqfile",        filopt.blq).toString();
+    GoogleEarthFile    =ini.value("opt/googleearthfile",GOOGLE_EARTH).toString();
     
     RovList="";
     for (int i=0;i<10;i++) {
@@ -1369,10 +1367,10 @@ void MainForm::LoadOpt(void)
     for (int i=0;i<3;i++) for (int j=0;j<6;j++) {
         ExtErr.perr[i][j]=ini.value(QString("exterr_perr%1%2").arg(i).arg(j),0.003).toDouble();
     }
-    ExtErr.gloicb[0]   =ini.value  ("opt/exterr_gloicb0",0.0).toDouble();
-    ExtErr.gloicb[1]   =ini.value  ("opt/exterr_gloicb1",0.0).toDouble();
-    ExtErr.gpsglob[0]  =ini.value  ("opt/exterr_gpsglob0",0.0).toDouble();
-    ExtErr.gpsglob[1]  =ini.value  ("opt/exterr_gpsglob1",0.0).toDouble();
+    ExtErr.gloicb[0]   =ini.value("opt/exterr_gloicb0",0.0).toDouble();
+    ExtErr.gloicb[1]   =ini.value("opt/exterr_gloicb1",0.0).toDouble();
+    ExtErr.gpsglob[0]  =ini.value("opt/exterr_gpsglob0",0.0).toDouble();
+    ExtErr.gpsglob[1]  =ini.value("opt/exterr_gpsglob1",0.0).toDouble();
     
     convDialog->TimeSpan  ->setChecked(ini.value("conv/timespan",  0).toInt());
     convDialog->TimeIntF  ->setChecked(ini.value("conv/timeintf",  0).toInt());
