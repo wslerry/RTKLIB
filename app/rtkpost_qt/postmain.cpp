@@ -92,7 +92,7 @@ extern int showmsg(char *format, ...)
         QMetaObject::invokeMethod(mainForm, "ShowMsg",Qt::QueuedConnection,
                                   Q_ARG(QString,QString(buff)));
     }    
-    return !mainForm->AbortFlag;
+    return mainForm->AbortFlag;
 }
 // set time span of progress bar --------------------------------------------
 extern void settspan(gtime_t ts, gtime_t te)
@@ -471,7 +471,8 @@ void MainForm::BtnOptionClick()
 void MainForm::BtnExecClick()
 {
     QString OutputFile_Text=OutputFile->currentText();
-    
+    AbortFlag=false;
+
     if (InputFile1->currentText()=="") {
         showmsg("error : no rinex obs file (rover)");
         return;
