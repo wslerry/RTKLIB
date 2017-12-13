@@ -1130,7 +1130,7 @@ void MainForm::ShowMsg(const QString &msg)
 // get time from time-1 -----------------------------------------------------
 gtime_t MainForm::GetTime1(void)
 {
-    QDateTime time(TimeY1->date(),TimeH1->time());
+    QDateTime time(TimeY1->date(),TimeH1->time(), Qt::UTC);
 
     gtime_t t;
     t.time=time.toTime_t();t.sec=time.time().msec()/1000;
@@ -1140,7 +1140,7 @@ gtime_t MainForm::GetTime1(void)
 // get time from time-2 -----------------------------------------------------
 gtime_t MainForm::GetTime2(void)
 {
-    QDateTime time(TimeY2->date(),TimeH2->time());
+    QDateTime time(TimeY2->date(),TimeH2->time(), Qt::UTC);
 
     gtime_t t;
     t.time=time.toTime_t();t.sec=time.time().msec()/1000;
@@ -1150,14 +1150,14 @@ gtime_t MainForm::GetTime2(void)
 // set time to time-1 -------------------------------------------------------
 void MainForm::SetTime1(gtime_t time)
 {
-    QDateTime t=QDateTime::fromTime_t(time.time); t=t.addSecs(time.sec);
+    QDateTime t=QDateTime::fromTime_t(time.time, Qt::UTC); t=t.addMSecs(time.sec*1000);
     TimeY1->setTime(t.time());
     TimeH1->setDate(t.date());
 }
 // set time to time-2 -------------------------------------------------------
 void MainForm::SetTime2(gtime_t time)
 {
-    QDateTime t=QDateTime::fromTime_t(time.time); t=t.addSecs(time.sec);
+    QDateTime t=QDateTime::fromTime_t(time.time, Qt::UTC); t=t.addMSecs(time.sec*1000);
     TimeY2->setTime(t.time());
     TimeH2->setDate(t.date());
 }
@@ -1229,7 +1229,7 @@ void MainForm::LoadOpt(void)
     ReadList(OutputFile,&ini,"hist/outputfile");
     
     PosMode            =ini.value("opt/posmode",        prcopt.mode).toInt();
-    Freq               =ini.value("opt/freq",           prcopt.nf).toInt() - 1;
+    Freq               =ini.value("opt/freq",           prcopt.nf-1).toInt();
     Solution           =ini.value("opt/solution",       prcopt.soltype).toInt();
     ElMask             =ini.value("opt/elmask",         prcopt.elmin).toDouble() * R2D;
     SnrMask.ena[0]     =ini.value("opt/snrmask_ena1",   prcopt.snrmask.ena[0]).toInt();
@@ -1304,7 +1304,7 @@ void MainForm::LoadOpt(void)
     PrNoise5           =ini.value("opt/prnoise5",       prcopt.prn[4]).toDouble();
     
     RovPosType         =ini.value("opt/rovpostype",     prcopt.rovpos).toInt();
-    RefPosType         =ini.value("opt/refpostype",     prcopt.refpos).toInt() + 5;
+    RefPosType         =ini.value("opt/refpostype",     prcopt.refpos+5 ).toInt();
     RovPos[0]          =ini.value("opt/rovpos1",        prcopt.ru[0]).toDouble();
     RovPos[1]          =ini.value("opt/rovpos2",        prcopt.ru[1]).toDouble();
     RovPos[2]          =ini.value("opt/rovpos3",        prcopt.ru[2]).toDouble();
