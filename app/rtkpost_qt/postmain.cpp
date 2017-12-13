@@ -1304,7 +1304,7 @@ void MainForm::LoadOpt(void)
     PrNoise5           =ini.value("opt/prnoise5",       prcopt.prn[4]).toDouble();
     
     RovPosType         =ini.value("opt/rovpostype",     prcopt.rovpos).toInt();
-    RefPosType         =ini.value("opt/refpostype",     prcopt.refpos+5 ).toInt();
+    RefPosType         =ini.value("opt/refpostype",     prcopt.refpos+5).toInt();
     RovPos[0]          =ini.value("opt/rovpos1",        prcopt.ru[0]).toDouble();
     RovPos[1]          =ini.value("opt/rovpos2",        prcopt.ru[1]).toDouble();
     RovPos[2]          =ini.value("opt/rovpos3",        prcopt.ru[2]).toDouble();
