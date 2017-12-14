@@ -980,7 +980,7 @@ static void *rtksvrthread(void *arg)
 
             /* don't connect if single solution is required but absent */
             if (svr->stream[stream_number].type == STR_NTRIPCLI && ntrip_single_required) 
-                if (i == BASE_STREAM && svr->rtk.sol.stat == SOLQ_NONE) 
+                if (stream_number == BASE_STREAM && svr->rtk.sol.stat == SOLQ_NONE) 
                     continue;
 
             /* read receiver raw/rtcm data from input stream */
