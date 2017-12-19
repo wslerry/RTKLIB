@@ -228,7 +228,6 @@ extern void rtk_multi_merge_fxhr(rtk_multi_t *rtk_multi)
     if ( rtk_multi->n_hypotheses > 1 ) { /* output fix */
         
         hypothesis = rtk_multi->hypotheses[1];
-        
     }
     
     assert( rtk_history_is_valid(hypothesis) );

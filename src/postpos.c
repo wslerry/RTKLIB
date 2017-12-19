@@ -422,6 +422,7 @@ static void procpos(FILE *fp, FILE *fptm, const prcopt_t *popt, const solopt_t *
     sol_t sol={{0}},oldsol={{0}},newsol={{0}};
     obsd_t obs[MAXOBS*2]; /* for rover and base */
     double rb[3]={0};
+    int rtk_status = 0;
     int i,nobs,n,solstatic,num=0,pri[]={0,1,2,3,4,5,1,6};
     rtk_input_data_t *rtk_input_data = malloc(sizeof(rtk_input_data_t));
     
@@ -460,28 +461,33 @@ static void procpos(FILE *fp, FILE *fptm, const prcopt_t *popt, const solopt_t *
 #endif
         if ( (popt->multihyp_mode) && (popt->modear == 3) ) { /* multihypothesis mode on */
             
-            /* todo: implement invalid timemark (likewise to the 'off' case) */
             rtk_input_data->obsd = obs;
             rtk_input_data->n_obsd = n;
             rtk_input_data->nav = &navs;
             rtk_multi_estimate(rtk_multi, &rtk_multi_strategy_fxhr, rtk_input_data);
             assert( rtk_multi_is_valid_fxhr(rtk_multi) );
-            outsolstat(rtk, rtk_input_data->nav);
         }
         else { /* multihypothesis mode off */
             
-            if (!rtkpos(rtk,obs,n,&navs)) {
-                if (rtk->sol.eventime.time != 0) {
-                    if (mode == 0) {
-                        outinvalidtm(fptm, sopt, rtk->sol.eventime);
-                    } else if (!revs) {
-                        invalidtm[nitm++] = rtk->sol.eventime;
-                    }
-                }
-                continue;
-            }
-            outsolstat(rtk, &navs);
+            rtk_status = rtkpos(rtk, obs, n, &navs);
         }
+        
+        if ( (rtk_status == 0) || (rtk->sol.stat == SOLQ_NONE) ) {
+            
+            if ( rtk->sol.eventime.time != 0 ) {
+                
+                if (mode == 0) {
+                    
+                    outinvalidtm(fptm, sopt, rtk->sol.eventime);
+                } 
+                else if ( !revs ) {
+                    
+                    invalidtm[nitm++] = rtk->sol.eventime;
+                }
+            }
+            continue;
+        }
+        outsolstat(rtk, &navs);
  
         /* todo: repair and/or test combined mode for multihypothesis estimation */
         if (mode==0) { /* forward/backward */
