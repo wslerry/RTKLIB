@@ -478,9 +478,9 @@ static void procpos(FILE *fp, FILE *fptm, const prcopt_t *popt, const solopt_t *
                         invalidtm[nitm++] = rtk->sol.eventime;
                     }
                 }
-                outsolstat(rtk, &navs);
                 continue;
             }
+            outsolstat(rtk, &navs);
         }
  
         /* todo: repair and/or test combined mode for multihypothesis estimation */
