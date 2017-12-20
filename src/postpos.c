@@ -422,7 +422,7 @@ static void procpos(FILE *fp, FILE *fptm, const prcopt_t *popt, const solopt_t *
     sol_t sol={{0}},oldsol={{0}},newsol={{0}};
     obsd_t obs[MAXOBS*2]; /* for rover and base */
     double rb[3]={0};
-    int rtk_status = 0;
+    int rtk_status = 1;
     int i,nobs,n,solstatic,num=0,pri[]={0,1,2,3,4,5,1,6};
     rtk_input_data_t *rtk_input_data = malloc(sizeof(rtk_input_data_t));
     
