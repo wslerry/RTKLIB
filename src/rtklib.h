@@ -288,6 +288,7 @@ extern "C" {
 #define LOGSTROFFSET 7
 #define MONITORSTRN 10                   /* the number of MONITOR stream */
 
+#define NOUTFILE    9                   /* number of output files for rinex conversion */
 #define RNX2VER     2.10                /* RINEX ver.2 default output version */
 #define RNX3VER     3.00                /* RINEX ver.3 default output version */
 

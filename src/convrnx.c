@@ -32,7 +32,8 @@
 *-----------------------------------------------------------------------------*/
 #include "rtklib.h"
 
-#define NOUTFILE        9       /* number of output files */
+static const char rcsid[]="$Id:$";
+
 #define TSTARTMARGIN    60.0    /* time margin for file name replacement */
 #define STR_DELAY       25.0    /* ms */
 #define TINT_MIN_VALUE   1e-3	/* min value for time interval */
