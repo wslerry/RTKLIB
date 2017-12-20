@@ -195,31 +195,36 @@ const double lam_carr[MAXFREQ]={ /* carrier wave length (m) */
     CLIGHT/FREQ8,CLIGHT/FREQ9
 };
 const prcopt_t prcopt_default={ /* defaults processing options */
-    PMODE_SINGLE,0,2,SYS_GPS,   /* mode,soltype,nf,navsys */
-    15.0*D2R,{{0,0}},           /* elmin,snrmask */
-    0,1,1,1,1,0,                /* sateph,modear,glomodear,gpsmodear,bdsmodear,arfilter */
-    5,0,2,2,20,10,              /* maxout,minlock,minfixsats,minholdsats,mindropsats,minfix */
-    0,1,0,0,0,0,                /* rcvstds,armaxiter,estion,esttrop,dynamics,tidecorr */
-    1,0,0,0,0,                  /* niter,codesmooth,intpref,sbascorr,sbassatsel */
-    0,0,                        /* rovpos,refpos */
-    {100.0,100.0},              /* eratio[] */
-    {100.0,0.003,0.003,0.0,1.0}, /* err[] */
+    .mode=PMODE_KINEMA, .soltype=0,     .nf=1,
+    .navsys=SYS_ALL,    .elmin=15.0*D2R,.snrmask= {{0,0}},
+    .sateph=0,          .modear=3,      .glomodear=0,
+    .gpsmodear=3,       .bdsmodear=0,   .arfilter=0,
+    .maxout=5,          .minlock=0,     .minfixsats=2,
+    .minholdsats=2,     .mindropsats=20,.minfix=10,
+    .rcvstds=0,         .armaxiter=1,   .ionoopt=0,
+    .tropopt=0,         .dynamics=1,    .tidecorr=0,
+    .niter=1,           .codesmooth=0,  .intpref=0,
+    .sbascorr=0,        .sbassatsel=0,  .rovpos=0,
+    .refpos=3,          .eratio={300.0,100.0},
+    .err={100.0,0.003,0.003,0.0,1.0},
 
-    0, 100, 0.2,                /* smooth-mode, smooth-window, smooth-varratio */
-    
-    0,                          /* base-multi_epoch */ 
+    .smoothing_mode=0,      .smoothing_window=100,
+    .smoothing_varratio=0.2,
+    .base_multi_epoch=0,
+    .residual_mode=0,       .residual_maxiter=5,
+    .residual_reset_fix=0.2,.residual_reset_float=0.5,
+    .residual_block_fix_sat=0.05,
 
-    0, 5, 0.2, 0.5, 0.05,       /* resid-mode, resid-maxiter, resid-reset_fix, resid-reset_float, resid-block_fix_sat */
-
-    {30.0,0.03,0.3},            /* std[] */
-    {1E-4,1E-3,1E-4,1E-1,1E-2,0.0}, /* prn[] */
-    5E-12,                      /* sclkstab */
-    {3.0,0.9999,0.25,0.1,0.05}, /* thresar */
-    0.0,0.0,0.05,.001,.01,      /* elmaskar,elmaskhold,thresslip,varholdamb,gainholdamb */
-    30.0,30.0,30.0,             /* maxtdif,maxinno,maxgdop */
-    {0},{0},{0},                /* baseline,ru,rb */
-    {"",""},                    /* anttype */
-    {{0}},{{0}},{0}             /* antdel,pcv,exsats */
+    .std={30.0,0.03,0.3},
+    .prn={1E-4,1E-3,1E-4,1E-1,1E-2,0.0},
+    .sclkstab=5E-12,
+    .thresar={3.0,0.9999,0.25,0.1,0.05},
+    .elmaskar=0.0,      .elmaskhold=0.0,.thresslip=0.05,
+    .varholdamb=0.001,  .gainholdamb=0.01,
+    .maxtdiff=30.0,     .maxinno=30.0,  .maxgdop=30.0,
+    .baseline={0},      .ru={0},        .rb={0},
+    .anttype={"",""},   .antdel={{0}},  .pcvr={{0}},
+    .exsats={0},        .outsingle=1
 };
 const solopt_t solopt_default={ /* defaults solution output options */
     SOLF_LLH,TIMES_GPST,1,3,    /* posf,times,timef,timeu */
