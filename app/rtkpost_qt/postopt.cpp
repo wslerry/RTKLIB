@@ -63,7 +63,7 @@ OptDialog::OptDialog(QWidget *parent)
     connect(BtnRefPos,SIGNAL(clicked(bool)),this,SLOT(BtnRefPosClick()));
     connect(BtnRovPos,SIGNAL(clicked(bool)),this,SLOT(BtnRovPosClick()));
     connect(BtnStaPosView,SIGNAL(clicked(bool)),this,SLOT(BtnStaPosViewClick()));
-    connect(BtnStaPosFile,SIGNAL(clicked(bool)),this,SLOT(BtnSatPcvFileClick()));
+    connect(BtnStaPosFile,SIGNAL(clicked(bool)),this,SLOT(BtnSatPosFileClick()));
     connect(OutputHeight,SIGNAL(currentIndexChanged(int)),this,SLOT(OutputHeightClick()));
     connect(RefPosType,SIGNAL(currentIndexChanged(int)),this,SLOT(RefPosTypeChange()));
     connect(RovPosType,SIGNAL(currentIndexChanged(int)),this,SLOT(RovPosTypeChange()));
@@ -665,7 +665,7 @@ void OptDialog::LoadOpt(const QString &file)
 
 	resetsysopts();
     if (!loadopts(qPrintable(file),sysopts)) return;
-	getsysopts(&prcopt,&solopt,&filopt);
+    getsysopts(&prcopt,&solopt,1,&filopt);
 	
     PosMode		 ->setCurrentIndex(prcopt.mode);
     Freq		 ->setCurrentIndex(prcopt.nf>NFREQ-1?NFREQ-1:prcopt.nf-1);
