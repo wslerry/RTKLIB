@@ -1356,7 +1356,6 @@ extern int outnmea_gsv(unsigned char *buff, const sol_t *sol,
 }
 /* output solution in the form of nmea VTG sentence --------------------------*/
 extern int outnmea_vtg(unsigned char *buff, const sol_t *sol) {
-    static double dirp = 0.0;
     double pos[3], enuv[3], vel, dir;
     char *p = (char *) buff, *q, sum, dir_str[10] = "";
     char posmode;
