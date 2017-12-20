@@ -376,7 +376,7 @@ void  MainWindow::BtnOptClick()
     optDialog->Baseline[0]=Baseline[0];
     optDialog->Baseline[1]=Baseline[1];
     
-    optDialog->RovPosTypeF=RovPosTypeF;
+    optDialog->RovPosTypeF=RovPosTypeF-1;
     optDialog->RefPosTypeF=RefPosTypeF;
     optDialog->RovAntPcvF =RovAntPcvF;
     optDialog->RefAntPcvF =RefAntPcvF;
@@ -936,12 +936,13 @@ void  MainWindow::SvrStart(void)
     int itype[]={STR_SERIAL,STR_TCPCLI,STR_TCPSVR,STR_NTRIPCLI,STR_FILE,STR_FTP,STR_HTTP};
     int otype[]={STR_SERIAL,STR_TCPCLI,STR_TCPSVR,STR_NTRIPSVR,STR_FILE};
     int i,strs[MAXSTRRTK]={0},sat,ex,stropt[8]={0};
-    char *paths[8],*cmds[3]={0},*rcvopts[3]={0};
+    char *paths[8],*cmds[3]={0},*cmds_periodic[3]= {0},*rcvopts[3]={0};
     char buff[1024],*p;
     gtime_t time=timeget();
     pcvs_t pcvr,pcvs;
     pcv_t *pcv;
-    
+    char errmsg[20148];
+
     trace(3,"SvrStart\n");
     
     memset(&pcvr,0,sizeof(pcvs_t));
@@ -965,7 +966,7 @@ void  MainWindow::SvrStart(void)
         PrcOpt.rb[1]=RefPos[1];
         PrcOpt.rb[2]=RefPos[2];
     }
-    else if (RefPosTypeF==3) { // RTCM position
+    else if (RefPosTypeF==4) { // RTCM position
         PrcOpt.refpos=4;
         for (i=0;i<3;i++) PrcOpt.rb[i]=0.0;
     }else { // average of single position
@@ -1046,10 +1047,12 @@ void  MainWindow::SvrStart(void)
         cmds[i][0]=rcvopts[i][0]='\0';
         if (strs[i]==STR_SERIAL) {
             if (CmdEna[i][0]) strcpy(cmds[i],qPrintable(Cmds[i][0]));
+            if (CmdEna[i][2]) strcpy(cmds_periodic[i], qPrintable(Cmds[i][2]));
         }
         else if (strs[i]==STR_TCPCLI||strs[i]==STR_TCPSVR||
                  strs[i]==STR_NTRIPCLI) {
             if (CmdEnaTcp[i][0]) strcpy(cmds[i],qPrintable(CmdsTcp[i][0]));
+            if (CmdEnaTcp[i][2]) strcpy(cmds_periodic[i], qPrintable(CmdsTcp[i][2]));
         }
         strcpy(rcvopts[i],qPrintable(RcvOpt[i]));
     }
@@ -1091,8 +1094,8 @@ void  MainWindow::SvrStart(void)
     
     // start rtk server
     if (!rtksvrstart(&rtksvr,SvrCycle,SvrBuffSize,strs,paths,Format,NavSelect,
-                     cmds,rcvopts,NmeaCycle,NmeaReq,nmeapos,&PrcOpt,solopt,
-                     &monistr)) {
+                     cmds,cmds_periodic,rcvopts,NmeaCycle,NmeaReq,nmeapos,&PrcOpt,solopt,
+                     &monistr,errmsg)) {
         traceclose();
         for (i=0;i<8;i++) delete[] paths[i];
         for (i=0;i<3;i++) delete[] rcvopts[i];
@@ -2214,10 +2217,16 @@ void  MainWindow::SetTrayIcon(int index)
 // load option from ini file ------------------------------------------------
 void  MainWindow::LoadOpt(void)
 {
+    prcopt_t prcopt;
+    solopt_t solopt;
+    filopt_t filopt;
+    resetsysopts();
+    getsysopts(&prcopt, &solopt, 1, &filopt);
+
     QSettings settings(IniFile,QSettings::IniFormat);
-    QString s;
+    QString string_sep;
     int i,j,no,strno[]={0,1,6,2,3,4,5,7};
-    
+
     trace(3,"LoadOpt\n");
 
     for (i=0;i<8;i++) {
@@ -2242,95 +2251,98 @@ void  MainWindow::LoadOpt(void)
         CmdEnaTcp[i][j]=settings.value(QString("tcpip/cmdena_%1_%2").arg(i).arg(j),0).toInt();
         CmdsTcp[i][j].replace("@@","\r\n");
     }
-    PrcOpt.mode     =settings.value("prcopt/mode",            0).toInt();
-    PrcOpt.nf       =settings.value("prcopt/nf",              2).toInt();
-    PrcOpt.elmin    =settings.value("prcopt/elmin",    15.0*D2R).toInt();
-    PrcOpt.snrmask.ena[0]=settings.value("prcopt/snrmask_ena1",0).toInt();
-    PrcOpt.snrmask.ena[1]=settings.value("prcopt/snrmask_ena2",0).toInt();
+    PrcOpt.mode     =settings.value("prcopt/mode",              prcopt.mode).toInt();
+    PrcOpt.nf       =settings.value("prcopt/nf",                prcopt.nf-1).toInt();
+    PrcOpt.elmin    =settings.value("prcopt/elmin",             prcopt.elmin).toInt();
+    PrcOpt.snrmask.ena[0]=settings.value("prcopt/snrmask_ena1", prcopt.snrmask.ena[0]).toInt();
+    PrcOpt.snrmask.ena[1]=settings.value("prcopt/snrmask_ena2", prcopt.snrmask.ena[1]).toInt();
     for (i=0;i<NFREQ;i++) for (j=0;j<9;j++) {
         PrcOpt.snrmask.mask[i][j]=
-            settings.value(QString("prcopt/snrmask_%1_%2").arg(i+1).arg(j+1),0.0).toInt();
+            settings.value(QString("opt/snrmask_%1_%2").arg(i+1).arg(j+1),  35).toDouble();
     }
-    PrcOpt.dynamics =settings.value("prcopt/dynamics",        0).toInt();
-    PrcOpt.tidecorr =settings.value("prcopt/tidecorr",        0).toInt();
-    PrcOpt.modear   =settings.value("prcopt/modear",          1).toInt();
-    PrcOpt.glomodear=settings.value("prcopt/glomodear",       0).toInt();
-    PrcOpt.bdsmodear=settings.value("prcopt/bdsmodear",       0).toInt();
-    PrcOpt.maxout   =settings.value("prcopt/maxout",          5).toInt();
-    PrcOpt.minlock  =settings.value("prcopt/minlock",         0).toInt();
-    PrcOpt.minfix   =settings.value("prcopt/minfix",         10).toInt();
-    PrcOpt.ionoopt  =settings.value("prcopt/ionoopt",IONOOPT_BRDC).toInt();
-    PrcOpt.tropopt  =settings.value("prcopt/tropopt",TROPOPT_SAAS).toInt();
-    PrcOpt.sateph   =settings.value("prcopt/ephopt",  EPHOPT_BRDC).toInt();
-    PrcOpt.niter    =settings.value("prcopt/niter",           1).toInt();
-    PrcOpt.eratio[0]=settings.value("prcopt/eratio0",     100.0).toDouble();
-    PrcOpt.eratio[1]=settings.value("prcopt/eratio1",     100.0).toDouble();
-    PrcOpt.err[1]   =settings.value("prcopt/err1",        0.003).toDouble();
-    PrcOpt.err[2]   =settings.value("prcopt/err2",        0.003).toDouble();
-    PrcOpt.err[3]   =settings.value("prcopt/err3",          0.0).toDouble();
-    PrcOpt.err[4]   =settings.value("prcopt/err4",          1.0).toDouble();
-    PrcOpt.prn[0]   =settings.value("prcopt/prn0",         1E-4).toDouble();
-    PrcOpt.prn[1]   =settings.value("prcopt/prn1",         1E-3).toDouble();
-    PrcOpt.prn[2]   =settings.value("prcopt/prn2",         1E-4).toDouble();
-    PrcOpt.prn[3]   =settings.value("prcopt/prn3",         10.0).toDouble();
-    PrcOpt.prn[4]   =settings.value("prcopt/prn4",         10.0).toDouble();
-    PrcOpt.sclkstab =settings.value("prcopt/sclkstab",    5E-12).toDouble();
-    PrcOpt.thresar[0]=settings.value("prcopt/thresar",       3.0).toDouble();
-    PrcOpt.elmaskar =settings.value("prcopt/elmaskar",      0.0).toDouble();
-    PrcOpt.elmaskhold=settings.value("prcopt/elmaskhold",    0.0).toDouble();
-    PrcOpt.thresslip=settings.value("prcopt/thresslip",    0.05).toDouble();
-    PrcOpt.maxtdiff =settings.value("prcopt/maxtdiff",     30.0).toDouble();
-    PrcOpt.maxgdop  =settings.value("prcopt/maxgdop",      30.0).toDouble();
-    PrcOpt.maxinno  =settings.value("prcopt/maxinno",      30.0).toDouble();
-    PrcOpt.syncsol  =settings.value("prcopt/syncsol",         0).toInt();
-    ExSats          =settings.value("prcopt/exsats",         "").toString();
-    PrcOpt.navsys   =settings.value("prcopt/navsys",    SYS_GPS).toInt();
-    PrcOpt.posopt[0]=settings.value("prcopt/posopt1",         0).toInt();
-    PrcOpt.posopt[1]=settings.value("prcopt/posopt2",         0).toInt();
-    PrcOpt.posopt[2]=settings.value("prcopt/posopt3",         0).toInt();
-    PrcOpt.posopt[3]=settings.value("prcopt/posopt4",         0).toInt();
-    PrcOpt.posopt[4]=settings.value("prcopt/posopt5",         0).toInt();
-    PrcOpt.posopt[5]=settings.value("prcopt/posopt6",         0).toInt();
-    PrcOpt.maxaveep =settings.value("prcopt/maxaveep",     3600).toInt();
-    PrcOpt.initrst  =settings.value("prcopt/initrst",         1).toInt();
+    PrcOpt.dynamics =settings.value("prcopt/dynamics",          prcopt.dynamics).toInt();
+    PrcOpt.tidecorr =settings.value("prcopt/tidecorr",          prcopt.tidecorr).toInt();
+    PrcOpt.modear   =settings.value("prcopt/modear",            prcopt.modear).toInt();
+    PrcOpt.glomodear=settings.value("prcopt/glomodear",         prcopt.glomodear).toInt();
+    PrcOpt.bdsmodear=settings.value("prcopt/bdsmodear",         prcopt.bdsmodear).toInt();
+    PrcOpt.maxout   =settings.value("prcopt/maxout",            prcopt.maxout).toInt();
+    PrcOpt.minlock  =settings.value("prcopt/minlock",           prcopt.minlock).toInt();
+    PrcOpt.minfix   =settings.value("prcopt/minfix",            prcopt.minfix).toInt();
+    PrcOpt.ionoopt  =settings.value("prcopt/ionoopt",           prcopt.ionoopt).toInt();
+    PrcOpt.tropopt  =settings.value("prcopt/tropopt",           prcopt.tropopt).toInt();
+    PrcOpt.sateph   =settings.value("prcopt/ephopt",            prcopt.sateph).toInt();
+    PrcOpt.niter    =settings.value("prcopt/niter",             prcopt.niter).toInt();
+    PrcOpt.eratio[0]=settings.value("prcopt/eratio0",           prcopt.eratio[0]).toDouble();
+    PrcOpt.eratio[1]=settings.value("prcopt/eratio1",           prcopt.eratio[1]).toDouble();
+    PrcOpt.err[1]   =settings.value("prcopt/err1",              prcopt.err[1]).toDouble();
+    PrcOpt.err[2]   =settings.value("prcopt/err2",              prcopt.err[2]).toDouble();
+    PrcOpt.err[3]   =settings.value("prcopt/err3",              prcopt.err[3]).toDouble();
+    PrcOpt.err[4]   =settings.value("prcopt/err4",              prcopt.err[4]).toDouble();
+    PrcOpt.prn[0]   =settings.value("prcopt/prn0",              prcopt.prn[0]).toDouble();
+    PrcOpt.prn[1]   =settings.value("prcopt/prn1",              prcopt.prn[1]).toDouble();
+    PrcOpt.prn[2]   =settings.value("prcopt/prn2",              prcopt.prn[2]).toDouble();
+    PrcOpt.prn[3]   =settings.value("prcopt/prn3",              prcopt.prn[3]).toDouble();
+    PrcOpt.prn[4]   =settings.value("prcopt/prn4",              prcopt.prn[4]).toDouble();
+    PrcOpt.sclkstab =settings.value("prcopt/sclkstab",          prcopt.sclkstab).toDouble();
+    for (i = 0; i < 8; i++) {
+        PrcOpt.thresar[i]   =settings.value("prcopt/thresar",          prcopt.thresar[i]).toDouble();
+    }
+    PrcOpt.elmaskar =settings.value("prcopt/elmaskar",          prcopt.elmaskar).toDouble();
+    PrcOpt.elmaskhold=settings.value("prcopt/elmaskhold",       prcopt.elmaskhold).toDouble();
+    PrcOpt.thresslip=settings.value("prcopt/thresslip",         prcopt.thresslip).toDouble();
+    PrcOpt.maxtdiff =settings.value("prcopt/maxtdiff",          prcopt.maxtdiff).toDouble();
+    PrcOpt.maxgdop  =settings.value("prcopt/maxgdop",           prcopt.maxgdop).toDouble();
+    PrcOpt.maxinno  =settings.value("prcopt/maxinno",           prcopt.maxinno).toDouble();
+    PrcOpt.syncsol  =settings.value("prcopt/syncsol",           prcopt.syncsol).toInt();
+    ExSats          =settings.value("prcopt/exsats",            "").toString();
+    PrcOpt.navsys   =settings.value("prcopt/navsys",            prcopt.navsys).toInt();
+    PrcOpt.posopt[0]=settings.value("prcopt/posopt1",           prcopt.posopt[0]).toInt();
+    PrcOpt.posopt[1]=settings.value("prcopt/posopt2",           prcopt.posopt[1]).toInt();
+    PrcOpt.posopt[2]=settings.value("prcopt/posopt3",           prcopt.posopt[2]).toInt();
+    PrcOpt.posopt[3]=settings.value("prcopt/posopt4",           prcopt.posopt[3]).toInt();
+    PrcOpt.posopt[4]=settings.value("prcopt/posopt5",           prcopt.posopt[4]).toInt();
+    PrcOpt.posopt[5]=settings.value("prcopt/posopt6",           prcopt.posopt[5]).toInt();
+    PrcOpt.maxaveep =settings.value("prcopt/maxaveep",          prcopt.maxaveep).toInt();
+    PrcOpt.initrst  =settings.value("prcopt/initrst",           prcopt.initrst).toInt();
 
-    BaselineC       =settings.value("prcopt/baselinec",       0).toInt();
-    Baseline[0]     =settings.value("prcopt/baseline1",     0.0).toDouble();
-    Baseline[1]     =settings.value("prcopt/baseline2",     0.0).toDouble();
-    
-    SolOpt.posf     =settings.value("solopt/posf",            0).toInt();
-    SolOpt.times    =settings.value("solopt/times",           0).toInt();
-    SolOpt.timef    =settings.value("solopt/timef",           1).toInt();
-    SolOpt.timeu    =settings.value("solopt/timeu",           3).toInt();
-    SolOpt.degf     =settings.value("solopt/degf",            0).toInt();
-    s=settings.value("solopt/sep"," ").toString();
-    strcpy(SolOpt.sep,qPrintable(s));
-    SolOpt.outhead  =settings.value("solop/outhead",         0).toInt();
-    SolOpt.outopt   =settings.value("solopt/outopt",          0).toInt();
-    SolOpt.datum    =settings.value("solopt/datum",           0).toInt();
-    SolOpt.height   =settings.value("solopt/height",          0).toInt();
-    SolOpt.geoid    =settings.value("solopt/geoid",           0).toInt();
-    SolOpt.nmeaintv[0]=settings.value("solopt/nmeaintv1",     0.0).toDouble();
-    SolOpt.nmeaintv[1]=settings.value("solopt/nmeaintv2",     0.0).toDouble();
-    DebugStatusF    =settings.value("setting/debugstatus",     0).toInt();
-    DebugTraceF     =settings.value("setting/debugtrace",      0).toInt();
-    
-    RovPosTypeF     =settings.value("setting/rovpostype",      0).toInt();
-    RefPosTypeF     =settings.value("setting/refpostype",      0).toInt();
-    RovAntPcvF      =settings.value("setting/rovantpcv",       0).toInt();
-    RefAntPcvF      =settings.value("setting/refantpcv",       0).toInt();
-    RovAntF         =settings.value("setting/rovant",         "").toString();
-    RefAntF         =settings.value("setting/refant",         "").toString();
-    SatPcvFileF     =settings.value("setting/satpcvfile",     "").toString();
-    AntPcvFileF     =settings.value("setting/antpcvfile",     "").toString();
-    StaPosFileF     =settings.value("setting/staposfile",     "").toString();
-    GeoidDataFileF  =settings.value("setting/geoiddatafile",  "").toString();
-    DCBFileF        =settings.value("setting/dcbfile",        "").toString();
-    EOPFileF        =settings.value("setting/eopfile",        "").toString();
+    BaselineC       =settings.value("prcopt/baselinec",         0).toInt();
+    Baseline[0]     =settings.value("prcopt/baseline1",         prcopt.baseline[0]).toDouble();
+    Baseline[1]     =settings.value("prcopt/baseline2",         prcopt.baseline[1]).toDouble();
+
+    SolOpt.posf     =settings.value("solopt/posf",              solopt.posf).toInt();
+    SolOpt.times    =settings.value("solopt/times",             solopt.times).toInt();
+    SolOpt.timef    =settings.value("solopt/timef",             solopt.timef).toInt();
+    SolOpt.timeu    =settings.value("solopt/timeu",             solopt.timeu).toInt();
+    SolOpt.degf     =settings.value("solopt/degf",              solopt.degf).toInt();
+    string_sep      =settings.value("solopt/sep",               solopt.sep).toString();
+    strcpy(SolOpt.sep, qPrintable(string_sep));
+
+    SolOpt.outhead  =settings.value("solop/outhead",            solopt.outhead).toInt();
+    SolOpt.outopt   =settings.value("solopt/outopt",            solopt.outopt).toInt();
+    SolOpt.datum    =settings.value("solopt/datum",             solopt.datum).toInt();
+    SolOpt.height   =settings.value("solopt/height",            solopt.height).toInt();
+    SolOpt.geoid    =settings.value("solopt/geoid",             solopt.geoid).toInt();
+    SolOpt.nmeaintv[0]=settings.value("solopt/nmeaintv1",       solopt.nmeaintv[0]).toDouble();
+    SolOpt.nmeaintv[1]=settings.value("solopt/nmeaintv2",       solopt.nmeaintv[1]).toDouble();
+    DebugStatusF    =settings.value("setting/debugstatus",      solopt.sstat).toInt();
+    DebugTraceF     =settings.value("setting/debugtrace",       solopt.trace).toInt();
+
+    RovPosTypeF     =settings.value("setting/rovpostype",       prcopt.rovpos).toInt();
+    RefPosTypeF     =settings.value("setting/refpostype",       POSOPT_RTCM).toInt();
+    RovAntPcvF      =settings.value("setting/rovantpcv",        0).toInt();
+    RefAntPcvF      =settings.value("setting/refantpcv",        0).toInt();
+    RovAntF         =settings.value("setting/rovant",           prcopt.anttype[0]).toString();
+    RefAntF         =settings.value("setting/refant",           prcopt.anttype[1]).toString();
+    SatPcvFileF     =settings.value("setting/satpcvfile",       filopt.satantp).toString();
+    AntPcvFileF     =settings.value("setting/antpcvfile",       filopt.rcvantp).toString();
+    StaPosFileF     =settings.value("setting/staposfile",       filopt.stapos).toString();
+    GeoidDataFileF  =settings.value("setting/geoiddatafile",    filopt.geoid).toString();
+    DCBFileF        =settings.value("setting/dcbfile",          filopt.dcb).toString();
+    EOPFileF        =settings.value("setting/eopfile",          filopt.eop).toString();
     TLEFileF        =settings.value("setting/tlefile",        "").toString();
     TLESatFileF     =settings.value("setting/tlesatfile",     "").toString();
     LocalDirectory  =settings.value("setting/localdirectory","C:\\Temp").toString();
-    
+
     SvrCycle        =settings.value("setting/svrcycle",       10).toInt();
     TimeoutTime     =settings.value("setting/timeouttime", 10000).toInt();
     ReconTime       =settings.value("setting/recontime",   10000).toInt();
@@ -2342,7 +2354,7 @@ void  MainWindow::LoadOpt(void)
     PrcOpt.sbassatsel=settings.value("setting/sbassat",        0).toInt();
     DgpsCorr        =settings.value("setting/dgpscorr",        0).toInt();
     SbasCorr        =settings.value("setting/sbascorr",        0).toInt();
-    
+
     NmeaReq         =settings.value("setting/nmeareq",         0).toInt();
     InTimeTag       =settings.value("setting/intimetag",       0).toInt();
     InTimeSpeed     =settings.value("setting/intimespeed",  "x1").toString();
@@ -2356,7 +2368,7 @@ void  MainWindow::LoadOpt(void)
     NmeaPos[0]      =settings.value("setting/nmeapos1",      0.0).toDouble();
     NmeaPos[1]      =settings.value("setting/nmeapos2",      0.0).toDouble();
     FileSwapMargin  =settings.value("setting/fswapmargin",    30).toInt();
-    
+
     TimeSys         =settings.value("setting/timesys",         0).toInt();
     SolType         =settings.value("setting/soltype",         0).toInt();
     PlotType1       =settings.value("setting/plottype",        0).toInt();
@@ -2398,12 +2410,12 @@ void  MainWindow::LoadOpt(void)
 //    PosFont.setStyle(QColor(settings.value("setting/posfontcolor",(int)clBlack).toInt());
     if (settings.value("setting/posfontbold",  0).toInt()) PosFont.setBold(true);
     if (settings.value("setting/posfontitalic",0).toInt()) PosFont.setItalic(true);;
-    
+
     TextViewer::Color1=QColor(static_cast<QRgb>(settings.value("viewer/color1",static_cast<int>(Qt::black)).toInt()));
     TextViewer::Color2=QColor(static_cast<QRgb>(settings.value("viewer/color2",static_cast<int>(Qt::white)).toInt()));
     TextViewer::FontD.setFamily(settings.value("viewer/fontname","Courier New").toString());
     TextViewer::FontD.setPointSize(settings.value("viewer/fontsize",9).toInt());
-    
+
     UpdatePanel();
 
     Splitter1->restoreState(settings.value("window/splitpos").toByteArray());
