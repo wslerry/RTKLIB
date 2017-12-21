@@ -39,6 +39,8 @@
 *           2017/04/11  1.21 add rtkfree() in rtksvrfree()
 *-----------------------------------------------------------------------------*/
 #include "rtklib.h"
+#include "multihypothesis.h"
+#include "fix_and_hold_refinement_strategy.h"
 
 static const char rcsid[]="$Id:$";
 
@@ -47,6 +49,12 @@ static const char rcsid[]="$Id:$";
 #define NMEAREQ_SEND_LLH            1       /* nmea request with llh position */
 #define NMEAREQ_SEND_SINGLE         2       /* nmea request with single solution */
 #define NMEAREQ_SEND_RESET_SINGLE   3       /* send reset and nmea request with single solution */
+
+static rtk_multi_t *rtk_multi;
+
+rtk_multi_strategy_t rtk_multi_strategy_fxhr = {&rtk_multi_split_fxhr,
+                                                &rtk_multi_qualify_fxhr,
+                                                &rtk_multi_merge_fxhr};
 
 /* write solution header to output stream ------------------------------------*/
 static void writesolhead(stream_t *stream, const solopt_t *solopt)
@@ -951,6 +959,7 @@ static void *rtksvrthread(void *arg)
     double maxage = svr->rtk.opt.maxtdiff;
     int    navsys = svr->rtk.opt.navsys; 
     int ntrip_single_required = 0;
+    rtk_input_data_t *rtk_input_data = malloc(sizeof(rtk_input_data_t));
 
     /* This "fake" solution structure is passed to strsendnmea
      * when inpstr2-nmeareq is set to latlon*/
@@ -1076,7 +1085,19 @@ static void *rtksvrthread(void *arg)
                 corr_phase_bias(obs.data,obs.n,&svr->nav);
             }
             /* rtk positioning */
-            rtkpos(&svr->rtk,obs.data,obs.n,&svr->nav);
+            if ( (svr->rtk.opt.multihyp_mode) && (svr->rtk.opt.modear == 3) ) { /* multihypothesis mode on */
+            
+                rtk_input_data->obsd = obs.data;
+                rtk_input_data->n_obsd = obs.n;
+                rtk_input_data->nav = &svr->nav;
+                rtk_multi_estimate(rtk_multi, &rtk_multi_strategy_fxhr, rtk_input_data);
+                assert( rtk_multi_is_valid_fxhr(rtk_multi) );
+                rtk_copy(rtk_multi->rtk_out, &svr->rtk);
+            }
+            else {
+                
+                rtkpos(&svr->rtk,obs.data,obs.n,&svr->nav);
+            }
 
             if (svr->rtk.sol.stat!=SOLQ_NONE) {
 
@@ -1129,6 +1150,9 @@ static void *rtksvrthread(void *arg)
         svr->nsb[i]=0;
         free(svr->sbuf[i]); svr->sbuf[i]=NULL;
     }
+    
+    free(rtk_input_data);
+    
     return 0;
 }
 /* initialize rtk server -------------------------------------------------------
@@ -1302,6 +1326,13 @@ extern int rtksvrstart(rtksvr_t *svr, int cycle, int buffsize, int *strs,
     svr->base_queue = obs_queue_init();
     rtkfree(&svr->rtk);
     rtkinit(&svr->rtk,prcopt);
+    
+    rtk_multi = NULL;
+    if ( (prcopt->multihyp_mode) && (prcopt->modear == 3) ) {
+        
+        rtk_multi = rtk_multi_init_fxhr(*prcopt);
+        assert( rtk_multi_is_valid_fxhr(rtk_multi) );
+    }
 
     if (prcopt->initrst) { /* init averaging pos by restart */
         svr->nave=0;
@@ -1425,6 +1456,11 @@ extern void rtksvrstop(rtksvr_t *svr, char **cmds)
     svr->state=0;
 
     obs_queue_free(svr->base_queue);
+    
+    if ( rtk_multi != NULL ) {
+        
+        rtk_multi_free(rtk_multi);
+    }
     
     /* free rtk server thread */
 #ifdef WIN32
