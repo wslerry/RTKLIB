@@ -957,7 +957,7 @@ static void *rtksvrthread(void *arg)
     int i,j,n,fobs[3]={0},cycle,cputime, stream_number;
     gtime_t time_base, time_rover, time_last;
     double maxage = svr->rtk.opt.maxtdiff;
-    int    navsys = svr->rtk.opt.navsys; 
+    int    navsys = svr->rtk.opt.navsys;
     int ntrip_single_required = 0;
     rtk_input_data_t *rtk_input_data = malloc(sizeof(rtk_input_data_t));
 
@@ -1085,16 +1085,22 @@ static void *rtksvrthread(void *arg)
                 corr_phase_bias(obs.data,obs.n,&svr->nav);
             }
             /* rtk positioning */
-            if ( (svr->rtk.opt.multihyp_mode) && (svr->rtk.opt.modear == 3) ) { /* multihypothesis mode on */
+            if ( (svr->rtk.opt.multihyp_mode) && (svr->rtk.opt.modear == ARMODE_FIXHOLD) ) { /* multihypothesis mode on */
             
                 rtk_input_data->obsd = obs.data;
                 rtk_input_data->n_obsd = obs.n;
                 rtk_input_data->nav = &svr->nav;
+                
+                rtk_multi->opt = svr->rtk.opt;
+                memcpy(rtk_multi->opt.rb, svr->rtk.rb, sizeof(double) * 3);
+                
                 rtk_multi_estimate(rtk_multi, &rtk_multi_strategy_fxhr, rtk_input_data);
                 assert( rtk_multi_is_valid_fxhr(rtk_multi) );
+                
                 rtk_copy(rtk_multi->rtk_out, &svr->rtk);
+                svr->rtk.opt = rtk_multi->opt;
             }
-            else {
+            else { /* multihypothesis mode off */
                 
                 rtkpos(&svr->rtk,obs.data,obs.n,&svr->nav);
             }
@@ -1328,7 +1334,7 @@ extern int rtksvrstart(rtksvr_t *svr, int cycle, int buffsize, int *strs,
     rtkinit(&svr->rtk,prcopt);
     
     rtk_multi = NULL;
-    if ( (prcopt->multihyp_mode) && (prcopt->modear == 3) ) {
+    if ( (prcopt->multihyp_mode) && (prcopt->modear == ARMODE_FIXHOLD) ) { /* multihypothesis mode on */
         
         rtk_multi = rtk_multi_init_fxhr(*prcopt);
         assert( rtk_multi_is_valid_fxhr(rtk_multi) );

@@ -459,7 +459,7 @@ static void procpos(FILE *fp, FILE *fptm, const prcopt_t *popt, const solopt_t *
             for (i=0;i<n;i++) obs[i].L[1]=obs[i].P[1]=0.0;
         }
 #endif
-        if ( (popt->multihyp_mode) && (popt->modear == 3) ) { /* multihypothesis mode on */
+        if ( (popt->multihyp_mode) && (popt->modear == ARMODE_FIXHOLD) ) { /* multihypothesis mode on */
             
             rtk_input_data->obsd = obs;
             rtk_input_data->n_obsd = n;
@@ -1181,13 +1181,13 @@ static int execses(gtime_t ts, gtime_t te, double ti, const prcopt_t *popt,
 
     iobsu=iobsr=isbs=ilex=revs=aborts=0;
     
-    if ( (popt_.multihyp_mode) && (popt_.modear == 3) ) {
+    if ( (popt_.multihyp_mode) && (popt_.modear == ARMODE_FIXHOLD) ) { /* multihypothesis mode on */
         
         rtk_multi = rtk_multi_init_fxhr(popt_);
         rtk       = rtk_multi->rtk_out;
         assert( rtk_multi_is_valid_fxhr(rtk_multi) );
     }
-    else {
+    else { /* multihypothesis mode on */
         
         rtk = rtk_init(&popt_);
     }
@@ -1235,11 +1235,11 @@ static int execses(gtime_t ts, gtime_t te, double ti, const prcopt_t *popt,
     /* free obs and nav data */
     freeobsnav(&obss,&navs);
     
-    if ( (popt_.multihyp_mode) && (popt_.modear == 3) ) {
+    if ( (popt_.multihyp_mode) && (popt_.modear == ARMODE_FIXHOLD) ) { /* multihypothesis mode on */
         
         rtk_multi_free(rtk_multi);
     }
-    else {
+    else { /* multihypothesis mode on */
      
         rtk_free(rtk);
     }

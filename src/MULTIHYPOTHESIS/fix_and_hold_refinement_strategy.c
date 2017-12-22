@@ -4,6 +4,8 @@
 
 #include "fix_and_hold_refinement_strategy.h"
 
+double ratio_float = 0.0;
+
 extern rtk_multi_t *rtk_multi_init_fxhr(prcopt_t opt)
 {
     rtk_multi_t   *rtk_multi = rtk_multi_init(opt);
@@ -11,10 +13,10 @@ extern rtk_multi_t *rtk_multi_init_fxhr(prcopt_t opt)
     rtk_t         *rtk;
 
     /* init float filter */
-    opt.modear = 0;
-    opt.gpsmodear = 0;
-    opt.glomodear = 0;
-    opt.bdsmodear = 0;
+    opt.modear = ARMODE_OFF;
+    opt.gpsmodear = ARMODE_OFF;
+    opt.glomodear = GLO_ARMODE_OFF;
+    opt.bdsmodear = ARMODE_OFF;
     hypothesis = rtk_history_init(opt);
     rtk = rtk_init(&opt);
     rtk_history_add(hypothesis, rtk);
@@ -131,6 +133,7 @@ extern void rtk_multi_split_fxhr(rtk_multi_t *rtk_multi, const rtk_input_data_t 
 {
     static int split_outage = -1;
     rtk_history_t *hypothesis;
+    int i;
     int is_fix_possible = 0; 
     int is_fix_hypothesis_of_low_quality = 0;
     rtk_t *rtk;
@@ -139,6 +142,17 @@ extern void rtk_multi_split_fxhr(rtk_multi_t *rtk_multi, const rtk_input_data_t 
     assert( rtk_multi_is_valid_fxhr(rtk_multi) );
     assert( rtk_input_data_is_valid(rtk_input_data) );
 
+    /* renew the base position */
+    for (i = 0; i < N_HYPOTHESES_FXHR; i++ ) {
+        
+        hypothesis = rtk_multi->hypotheses[i];
+        if ( hypothesis == NULL ) continue;
+        
+        rtk = rtk_history_get_pointer_to_last(hypothesis);
+        memcpy(rtk->opt.rb, rtk_multi->opt.rb, sizeof(double) * 3);
+        memcpy(rtk->rb, rtk_multi->opt.rb, sizeof(double) * 3);
+    }
+    
     split_outage++;
     if ( split_outage < SPLIT_INTERVAL_FXHR ) {
 
@@ -168,6 +182,7 @@ extern void rtk_multi_split_fxhr(rtk_multi_t *rtk_multi, const rtk_input_data_t 
     rtk_tmp->opt = rtk_multi->opt;
     rtkpos(rtk_tmp, rtk_input_data->obsd, rtk_input_data->n_obsd, rtk_input_data->nav);
     is_fix_possible = (rtk_tmp->sol.stat == SOLQ_FIX);
+    ratio_float = rtk_tmp->sol.ratio;
 
     if ( !is_fix_possible ) {
 
@@ -214,7 +229,7 @@ extern void rtk_multi_qualify_fxhr(rtk_multi_t *rtk_multi)
 extern void rtk_multi_merge_fxhr(rtk_multi_t *rtk_multi)
 {
     rtk_history_t *hypothesis = NULL;
-    rtk_t *rtk;
+    rtk_t *rtk = NULL;
 
     assert( rtk_multi_is_valid_fxhr(rtk_multi) );
 
@@ -222,17 +237,17 @@ extern void rtk_multi_merge_fxhr(rtk_multi_t *rtk_multi)
 
         hypothesis = rtk_multi->hypotheses[0];
         rtk = rtk_history_get_pointer_to_last(hypothesis);
-        rtk_copy(rtk, rtk_multi->rtk_out);
+        rtk->sol.ratio = ratio_float;
     }
-
+    
     if ( rtk_multi->n_hypotheses > 1 ) { /* output fix */
         
         hypothesis = rtk_multi->hypotheses[1];
+        rtk = rtk_history_get_pointer_to_last(hypothesis);
     }
     
     assert( rtk_history_is_valid(hypothesis) );
     
-    rtk = rtk_history_get_pointer_to_last(hypothesis);
     rtk_copy(rtk, rtk_multi->rtk_out);
-
+    
 }
