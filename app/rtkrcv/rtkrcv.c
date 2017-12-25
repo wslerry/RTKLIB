@@ -689,7 +689,7 @@ static void prstatus(vt_t *vt)
         n++;
     }
     dops(n,azel,0.0,dop);
-    vt_printf(vt,"\n%s%-28s: %s%s\n",ESC_BOLD,"Parameter","Value",ESC_RESET);
+    vt_printf(vt,"\n%-28s: %s\n","Parameter","Value");
     vt_printf(vt,"%-28s: %s %s\n","rtklib version",VER_RTKLIB,PATCH_LEVEL);
     vt_printf(vt,"%-28s: %s\n","rtk server state",svrstate[state]);
     vt_printf(vt,"%-28s: %d\n","processing cycle (ms)",cycle);
@@ -796,7 +796,7 @@ static void prsatellite(vt_t *vt, int nf)
     rtk=svr.rtk;
     rtksvrunlock(&svr);
     if (nf<=0||nf>NFREQ) nf=NFREQ;
-    vt_printf(vt,"\n%s%3s %2s %5s %4s",ESC_BOLD,"SAT","C1","Az","El");
+    vt_printf(vt,"\n%3s %2s %5s %4s","SAT","C1","Az","El");
     for (j=0;j<nf;j++) vt_printf(vt," L%d"    ,frq[j]);
     for (j=0;j<nf;j++) vt_printf(vt,"  Fix%d" ,frq[j]);
     for (j=0;j<nf;j++) vt_printf(vt,"  P%dRes",frq[j]);
@@ -804,7 +804,7 @@ static void prsatellite(vt_t *vt, int nf)
     for (j=0;j<nf;j++) vt_printf(vt,"  Sl%d"  ,frq[j]);
     for (j=0;j<nf;j++) vt_printf(vt,"  Lock%d",frq[j]);
     for (j=0;j<nf;j++) vt_printf(vt," Rj%d"   ,frq[j]);
-    vt_printf(vt,"%s\n",ESC_RESET);
+    vt_printf(vt,"\n");
 
     for (i=0;i<MAXSAT;i++) {
         if (rtk.ssat[i].azel[1]<=0.0) continue;
@@ -877,12 +877,12 @@ static void probserv(vt_t *vt, int nf, int only_valid)
     }
     rtksvrunlock(&svr);
 
-    vt_printf(vt, "\n%s%-22s %3s %s", ESC_BOLD, "      TIME(GPST)", "SAT", "R");
+    vt_printf(vt, "\n%-22s %3s %s","      TIME(GPST)", "SAT", "R");
     for (i = 0; i < nf; i++) vt_printf(vt, "        P%d(m)", frq[i]);
     for (i = 0; i < nf; i++) vt_printf(vt, "       L%d(cyc)", frq[i]);
     for (i = 0; i < nf; i++) vt_printf(vt, "  D%d(Hz)", frq[i]);
     for (i = 0; i < nf; i++) vt_printf(vt, " S%d", frq[i]);
-    vt_printf(vt, " LLI%s\n", ESC_RESET);
+    vt_printf(vt, " LLI\n");
 
     for (i = 0; i < n; i++)
     {
@@ -918,9 +918,9 @@ static void prnavidata(vt_t *vt)
     leaps=svr.nav.leaps;
     rtksvrunlock(&svr);
 
-    vt_printf(vt,"\n%s%3s %3s %3s %3s %3s %3s %3s %19s %19s %19s %3s %3s%s\n",
-              ESC_BOLD,"SAT","S","IOD","IOC","FRQ","A/A","SVH","Toe","Toc",
-              "Ttr/Tof","L2C","L2P",ESC_RESET);
+    vt_printf(vt,"\n%3s %3s %3s %3s %3s %3s %3s %19s %19s %19s %3s %3s\n",
+              "SAT","S","IOD","IOC","FRQ","A/A","SVH","Toe","Toc",
+              "Ttr/Tof","L2C","L2P");
     for (i=0;i<MAXSAT;i++) {
         if (!(satsys(i+1,&prn)&(SYS_GPS|SYS_GAL|SYS_QZS|SYS_CMP))||
             eph[i].sat!=i+1) continue;
@@ -995,9 +995,9 @@ static void prstream(vt_t *vt)
     format[MONITORSTRN]=SOLF_LLH;
     rtksvrunlock(&svr);
 
-    vt_printf(vt,"\n%s%-12s %-8s %-5s %s %10s %7s %10s %7s %-24s %s%s\n",ESC_BOLD,
+    vt_printf(vt,"\n%-12s %-8s %-5s %s %10s %7s %10s %7s %-24s %s\n",
               "Stream","Type","Fmt","S","In-byte","In-bps","Out-byte","Out-bps",
-              "Path","Message",ESC_RESET);
+              "Path","Message");
     for (i=0;i<(MAXSTRRTK+1);i++) {
         vt_printf(vt,"%-12s %-8s %-5s %s %10d %7d %10d %7d %-24.24s %s\n",
             ch[i],type[stream[i].type],i<3?fmt[format[i]]:(i<log_stream_number||i==MONITORSTRN?sol[format[i]]:"-"),
@@ -1399,8 +1399,8 @@ static void *con_thread(void *arg)
 
     trace(3,"console_thread:\n");
 
-    vt_printf(con->vt,"\n%s** %s ver.%s %s console (h:help) **%s\n",ESC_BOLD,
-              PRGNAME,VER_RTKLIB,PATCH_LEVEL,ESC_RESET);
+    vt_printf(con->vt,"\n** %s ver.%s %s console (h:help) **\n",
+              PRGNAME,VER_RTKLIB,PATCH_LEVEL);
 
     if (!login(con->vt)) {
         vt_close(con->vt);
