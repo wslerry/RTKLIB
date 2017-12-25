@@ -886,10 +886,10 @@ static void probserv(vt_t *vt, int nf, int only_valid)
         time2str(obs[i].time, tstr, 2);
         satno2id(obs[i].sat, sat_id);
         vt_printf(vt, "%s %3s %d", tstr, sat_id, obs[i].rcv);
-        for (j = 0; j < nf; j++) vt_printf(vt, "%13.3f", obs[i].P[j]);
-        for (j = 0; j < nf; j++) vt_printf(vt, "%14.3f", obs[i].L[j]);
-        for (j = 0; j < nf; j++) vt_printf(vt, "%8.1f", obs[i].D[j]);
-        for (j = 0; j < nf; j++) vt_printf(vt, "%3.0f", obs[i].SNR[j] * 0.25);
+        for (j = 0; j < nf; j++) vt_printf(vt, "%13.3f ", obs[i].P[j]);
+        for (j = 0; j < nf; j++) vt_printf(vt, "%14.3f ", obs[i].L[j]);
+        for (j = 0; j < nf; j++) vt_printf(vt, "%8.1f ", obs[i].D[j]);
+        for (j = 0; j < nf; j++) vt_printf(vt, "%3.0f ", obs[i].SNR[j] * 0.25);
         for (j = 0; j < nf; j++) vt_printf(vt, "%2d", obs[i].LLI[j]);
         vt_printf(vt, "\n");
     }
