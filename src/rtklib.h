@@ -1489,6 +1489,11 @@ typedef struct {        /* imu type */
     unsigned char buff[256]; /* imu data buffer */
 } imu_t;
 
+typedef struct {
+    int number;
+    int status;
+    int mode;           /* 0: static, 1: kinematic */
+} rnxevent_t;
 typedef void fatalfunc_t(const char *); /* fatal callback function type */
 
 /* global variables ----------------------------------------------------------*/
@@ -1697,7 +1702,7 @@ EXPORT int outrnxgnavb(FILE *fp, const rnxopt_t *opt, const geph_t *geph);
 EXPORT int outrnxhnavb(FILE *fp, const rnxopt_t *opt, const seph_t *seph);
 EXPORT int rtk_uncompress(const char *file, char *uncfile);
 EXPORT int convrnx(int format, rnxopt_t *opt, const char *file, char **ofile,
-                   int *intflg, stream_t *stream);
+                   int *intflg, stream_t *stream, rnxevent_t *event);
 EXPORT int  init_rnxctr (rnxctr_t *rnx);
 EXPORT void free_rnxctr (rnxctr_t *rnx);
 EXPORT int  open_rnxctr (rnxctr_t *rnx, FILE *fp);

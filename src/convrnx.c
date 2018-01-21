@@ -832,6 +832,19 @@ static void closefile(FILE **ofp, const rnxopt_t *opt, nav_t *nav)
         fclose(ofp[i]);
     }
 }
+static void outrnxevent_reach(FILE *fp, rnxevent_t *event) {
+    if (event->number == 2) {
+        fprintf(fp,">%30s%d%3d\n","", 2, 2);
+        fprintf(fp,"%-60s%-20s\n", "*** FROM NOW ON KINEMATIC DATA! ***", "COMMENT");
+        fprintf(fp,"%-60s%-20s\n", "", "COMMENT");
+    }
+    if (event->number == 3) {
+        fprintf(fp,">%30s%d%3d\n","", 3, 2);
+        fprintf(fp,"%-60s%-20s\n", "*** END OF KINEMATIC DATA! ***", "COMMENT");
+        fprintf(fp,"%-60s%-20s\n","REACHVIEW POINT","MARKER NAME");
+    }
+    event->status = 0;
+}
 /* output rinex event --------------------------------------------------------*/
 static void outrnxevent(FILE *fp, rnxopt_t *opt, int staid, stas_t *stas)
 {
@@ -923,7 +936,7 @@ static int is_tint(gtime_t time, gtime_t ts, gtime_t te, double tint) {
 }
 /* convert obs message -------------------------------------------------------*/
 static void convobs(FILE **ofp, rnxopt_t *opt, strfile_t *str, int *staid,
-                    stas_t *stas, int *n, unsigned char slips[][NFREQ+NEXOBS])
+                    stas_t *stas, int *n, unsigned char slips[][NFREQ+NEXOBS], rnxevent_t *event)
 {
     gtime_t time;
     
@@ -952,6 +965,9 @@ static void convobs(FILE **ofp, rnxopt_t *opt, strfile_t *str, int *staid,
             outrnxevent(ofp[0],opt,str->rtcm.staid,stas);
         }
         *staid=str->rtcm.staid;
+    }
+    if (event->status) {
+        outrnxevent_reach(ofp[0], event);
     }
     /* output rinex obs */
 	outrnxobsb(ofp[0],opt,str->obs->data,str->obs->n,str->obs->flag);
@@ -1195,7 +1211,7 @@ static int showstat(int sess, gtime_t ts, gtime_t te, int *n)
 }
 /* rinex converter for single-session ----------------------------------------*/
 static int convrnx_s(int sess, int format, rnxopt_t *opt, const char *file,
-                     char **ofile, int *intflg, stream_t *stream)
+                     char **ofile, int *intflg, stream_t *stream, rnxevent_t *event)
 {
     FILE *ofp[NOUTFILE]={NULL};
     strfile_t *str;
@@ -1289,7 +1305,7 @@ static int convrnx_s(int sess, int format, rnxopt_t *opt, const char *file,
             
             /* convert message */
             switch (type) {
-                case  1: convobs(ofp,opt,str,&staid,stas,n,slips); break;
+                case  1: convobs(ofp,opt,str,&staid,stas,n,slips,event); break;
                 case  2: convnav(ofp,opt,str,n); break;
                 case  3: convsbs(ofp,opt,str,n); break;
                 case 31: convlex(ofp,opt,str,n); break;
@@ -1379,7 +1395,7 @@ static int convrnx_s(int sess, int format, rnxopt_t *opt, const char *file,
 *          the order of wild-card expanded files must be in-order by time
 *-----------------------------------------------------------------------------*/
 extern int convrnx(int format, rnxopt_t *opt, const char *file,
-                   char **ofile, int *intflg, stream_t *stream)
+                   char **ofile, int *intflg, stream_t *stream, rnxevent_t *event)
 {
     gtime_t t0={0};
     rnxopt_t opt_=*opt;
@@ -1396,7 +1412,7 @@ extern int convrnx(int format, rnxopt_t *opt, const char *file,
         
         /* single-session */
         opt_.tstart=opt_.tend=t0;
-        stat=convrnx_s(0,format,&opt_,file,ofile,intflg,stream);
+        stat=convrnx_s(0,format,&opt_,file,ofile,intflg,stream, event);
     }
     else if (timediff(opt->ts,opt->te)<=0.0) {
         
@@ -1413,7 +1429,7 @@ extern int convrnx(int format, rnxopt_t *opt, const char *file,
             if (timediff(opt_.ts,opt->ts)<0.0) opt_.ts=opt->ts;
             if (timediff(opt_.te,opt->te)>0.0) opt_.te=opt->te;
             opt_.tstart=opt_.tend=t0;
-            if ((stat=convrnx_s(i+1,format,&opt_,file,ofile,intflg,stream))<0) break;
+            if ((stat=convrnx_s(i+1,format,&opt_,file,ofile,intflg,stream, event))<0) break;
         }
     }
     else {

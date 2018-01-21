@@ -49,6 +49,7 @@ static const char rcsid[]="$Id: convbin.c,v 1.1 2008/07/17 22:13:04 ttaka Exp $"
 static int timeout      =0;         /* no timeout */
 static int reconnect    =0;         /* not reconnect interval */
 static int intflg       =0;
+static rnxevent_t event = {2, 0, 0};
 
 /* external stop signal ------------------------------------------------------*/
 static void sigshut(int sig)
@@ -56,7 +57,15 @@ static void sigshut(int sig)
     trace(3, "sigshut: sig=%d\n", sig);
     intflg = 1;
 }
-
+static void sigevent(int sig) {
+    if (sig == SIGUSR1) {
+        event.number = 2;
+    }
+    else {
+        event.number = 3;
+    }
+    event.status = 1;
+}
 /* help text -----------------------------------------------------------------*/
 static const char *help[]={
 "",
@@ -307,7 +316,7 @@ static int convbin(int format, rnxopt_t *opt, const char *ifile, char **file,
     if (*ofile[7]) fprintf(stderr,"->rinex inav: %s\n",ofile[7]);
     if (*ofile[8]) fprintf(stderr,"->sbas log  : %s\n",ofile[8]);
     
-    if (!convrnx(format,opt,ifile,ofile,intflg,stream)) {
+    if (!convrnx(format,opt,ifile,ofile,intflg,stream,&event)) {
         fprintf(stderr,"\n");
         return -1;
     }
@@ -601,7 +610,8 @@ int main(int argc, char **argv)
 
     signal(SIGINT, sigshut); /* keyboard interrupt */
     signal(SIGTERM, sigshut); /* external shutdown signal */
-    signal(SIGUSR2, sigshut);
+    signal(SIGUSR2, sigevent);
+    signal(SIGUSR1, sigevent);
 
     stat=convbin(format,&opt,ifile,ofile,dir,&intflg,&stream);
 
