@@ -2402,11 +2402,15 @@ static int rtk_estimate_iterative(rtk_t *rtk, const obsd_t *obsd, int n_obsd, co
     if ( maxiter <= 0 ) maxiter = 1;
     
     rtk_trial = rtk_init(&rtk->opt);
-    if ( !rtk_trial ) return 0;
+    if ( !rtk_is_valid(rtk_trial) ) {
+        
+        return 0;
+    }
     rtk_trial_prev = rtk_init(&rtk->opt);
-    if ( !rtk_trial_prev ) { 
-        rtk_free(rtk_trial); 
-        return 0; 
+    if ( !rtk_is_valid(rtk_trial_prev) ) {
+        
+        rtk_free(rtk_trial);
+        return 0;
     }
     
     for (i = 0; i < maxiter; i++) {
@@ -2414,6 +2418,7 @@ static int rtk_estimate_iterative(rtk_t *rtk, const obsd_t *obsd, int n_obsd, co
         rtk_copy(rtk, rtk_trial);
         stat = estimator(rtk_trial, obsd, n_obsd, nav);
         if ( stat == 0 ) break;
+        if ( i == (maxiter-1) ) break;                            /* last iteration */
         if ( !reestimation_modifier(rtk, rtk_trial) ) break;      /* modify some rtk struct fields to produce reestimation;
                                                                      break if no modifications applied */
         rtk_copy(rtk_trial, rtk_trial_prev);

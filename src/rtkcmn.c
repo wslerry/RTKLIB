@@ -210,7 +210,7 @@ const prcopt_t prcopt_default={ /* defaults processing options */
     
     0,                          /* base-multi_epoch */ 
 
-    0, 5, 0.2, 0.5, 0.05,       /* resid-mode, resid-maxiter, resid-reset_fix, resid-reset_float, resid-block_fix_sat */
+    0, 2, 0.2, 0.5, 0.05,       /* resid-mode, resid-maxiter, resid-reset_fix, resid-reset_float, resid-block_fix_sat */
     
     0,                          /* multihyp-mode */
 
