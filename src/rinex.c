@@ -1886,7 +1886,7 @@ extern int outrnxobsh(FILE *fp, const rnxopt_t *opt, const nav_t *nav)
     const char *glo_codes[]={"C1C","C1P","C2C","C2P"};
     double ep[6],pos[3]={0},del[3]={0};
     int i,j,k,n,prn[MAXPRNGLO];
-    char date[32],prog[20],*sys,*tsys="GPS";
+    char date[32],prog[50],*sys,*tsys="GPS";
     
     trace(3,"outrnxobsh:\n");
     
