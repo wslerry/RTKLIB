@@ -1233,7 +1233,7 @@ typedef struct {        /* RINEX options type */
     int freqtype;       /* frequency type */
     char mask[7][64];   /* code mask {GPS,GLO,GAL,QZS,SBS,CMP,IRN} */
     char staid [32];    /* station id for rinex file name */
-    char prog  [32];    /* program */
+    char prog  [100];    /* program */
     char runby [32];    /* run-by */
     char marker[64];    /* marker name */
     char markerno[32];  /* marker number */
