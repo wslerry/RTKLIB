@@ -48,9 +48,12 @@ void StartDialog::BtnOkClick()
 void StartDialog::BtnFileTimeClick()
 {
     QFileInfo fi(FileName);
-    QDateTime d=fi.created();
-
-    TimeH1->setTime(d.time());
-    TimeY1->setDate(d.date());
+    QDateTime birth=fi.created();
+    QDateTime lastModified=fi.lastModified();
+    if (birth > lastModified) {
+        birth = lastModified;
+    }
+    TimeH1->setTime(birth.time());
+    TimeY1->setDate(birth.date());
 }
 //---------------------------------------------------------------------------
