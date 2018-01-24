@@ -67,6 +67,8 @@ extern void rtk_history_free(rtk_history_t *rtk_history);
 
 extern void rtk_history_cut(rtk_history_t *rtk_history, int index_cut);
 extern void rtk_history_add(rtk_history_t *rtk_history, const rtk_t *rtk);
+extern int  rtk_history_is_empty(const rtk_history_t *rtk_history);
+extern void rtk_history_clear(rtk_history_t *rtk_history);
 extern rtk_t *rtk_history_get_pointer(const rtk_history_t *rtk_history, int index);
 extern rtk_t *rtk_history_get_pointer_to_last(const rtk_history_t *rtk_history);
 
@@ -80,7 +82,7 @@ extern rtk_multi_t *rtk_multi_init(prcopt_t opt);
 extern int rtk_multi_is_valid(const rtk_multi_t *rtk_multi);
 extern void rtk_multi_free(rtk_multi_t *rtk_multi);
 
-extern int rtk_multi_add(rtk_multi_t *rtk_multi, rtk_history_t *hypothesis);
+extern int rtk_multi_add(rtk_multi_t *rtk_multi, rtk_t *rtk);
 extern int rtk_multi_exclude(rtk_multi_t *rtk_multi, int index);
 
 extern void rtk_multi_estimate(rtk_multi_t *rtk_multi,

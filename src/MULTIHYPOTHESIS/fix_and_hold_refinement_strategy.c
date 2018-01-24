@@ -9,19 +9,19 @@ double ratio_float = 0.0;
 extern rtk_multi_t *rtk_multi_init_fxhr(prcopt_t opt)
 {
     rtk_multi_t   *rtk_multi = rtk_multi_init(opt);
-    rtk_history_t *hypothesis;
     rtk_t         *rtk;
+    int index_new;
 
     /* init float filter */
     opt.modear = ARMODE_OFF;
     opt.gpsmodear = ARMODE_OFF;
     opt.glomodear = GLO_ARMODE_OFF;
     opt.bdsmodear = ARMODE_OFF;
-    hypothesis = rtk_history_init(opt);
     rtk = rtk_init(&opt);
-    rtk_history_add(hypothesis, rtk);
-    hypothesis->target_solution_status = SOLQ_FLOAT;
-    rtk_multi_add(rtk_multi, hypothesis);
+    index_new = rtk_multi_add(rtk_multi, rtk);
+    rtk_multi->hypotheses[index_new]->target_solution_status = SOLQ_FLOAT;
+    
+    assert( index_new == 0 );
     
     rtk_free(rtk);
 
@@ -41,7 +41,7 @@ extern int rtk_multi_is_valid_fxhr(const rtk_multi_t *rtk_multi)
         return 0;
     }
     /* float filter (hypothesis) should be defined */
-    if ( !rtk_history_is_valid(rtk_multi->hypotheses[0]) )  {
+    if ( rtk_history_is_empty(rtk_multi->hypotheses[0]) )  {
 
         return 0;
     }
@@ -51,7 +51,7 @@ extern int rtk_multi_is_valid_fxhr(const rtk_multi_t *rtk_multi)
     }
     for (i = 1; i < N_HYPOTHESES_FXHR; i++) {
 
-        if ( rtk_multi->hypotheses[i] == NULL ) continue;
+        if ( rtk_history_is_empty(rtk_multi->hypotheses[i]) ) continue;
         if ( rtk_multi->hypotheses[i]->target_solution_status != SOLQ_FIX ) {
 
             return 0;
@@ -73,8 +73,9 @@ static int rtk_history_validate_fxhr(rtk_history_t *rtk_history)
     rtk_t *rtk;
 
     assert( rtk_history_is_valid(rtk_history) );
+    assert( !rtk_history_is_empty(rtk_history) );
+    
     n_epochs = rtk_history->history->length;
-    assert( n_epochs > 0 );
     
     rtk_history->solution_quality = -1.0;
 
@@ -133,7 +134,7 @@ extern void rtk_multi_split_fxhr(rtk_multi_t *rtk_multi, const rtk_input_data_t 
 {
     static int split_outage = -1;
     rtk_history_t *hypothesis;
-    int i;
+    int i, index_new;
     int is_fix_possible = 0; 
     int is_fix_hypothesis_of_low_quality = 0;
     rtk_t *rtk;
@@ -146,7 +147,7 @@ extern void rtk_multi_split_fxhr(rtk_multi_t *rtk_multi, const rtk_input_data_t 
     for (i = 0; i < N_HYPOTHESES_FXHR; i++ ) {
         
         hypothesis = rtk_multi->hypotheses[i];
-        if ( hypothesis == NULL ) continue;
+        if ( rtk_history_is_empty(hypothesis) ) continue;
         
         rtk = rtk_history_get_pointer_to_last(hypothesis);
         memcpy(rtk->opt.rb, rtk_multi->opt.rb, sizeof(double) * 3);
@@ -194,13 +195,11 @@ extern void rtk_multi_split_fxhr(rtk_multi_t *rtk_multi, const rtk_input_data_t 
     rtk = rtk_history_get_pointer_to_last(rtk_multi->hypotheses[0]);
     rtk_copy(rtk, rtk_tmp);
     rtk_tmp->opt = rtk_multi->opt;
-    hypothesis = rtk_history_init(rtk_multi->opt);
-    hypothesis->target_solution_status = SOLQ_FIX;
-    rtk_history_add(hypothesis, rtk_tmp);
-
+    
     /* add new hypothesis if all checks are passed */
     if ( is_fix_hypothesis_of_low_quality ) rtk_multi_exclude(rtk_multi, N_HYPOTHESES_FXHR-1); /* kill weak hypothesis */
-    rtk_multi_add(rtk_multi, hypothesis);
+    index_new = rtk_multi_add(rtk_multi, rtk_tmp);
+    rtk_multi->hypotheses[index_new]->target_solution_status = SOLQ_FIX;
 
     rtk_free(rtk_tmp);
 }
@@ -216,7 +215,7 @@ extern void rtk_multi_qualify_fxhr(rtk_multi_t *rtk_multi)
     for (i = 1; i < N_HYPOTHESES_FXHR; i++) { /* note: i == 0 is for float filter (never excluded) */
         
         hypothesis = rtk_multi->hypotheses[i];
-        if ( hypothesis == NULL ) continue;
+        if ( rtk_history_is_empty(hypothesis) ) continue;
 
         if ( rtk_history_validate_fxhr(hypothesis) == 0 ) {
             
@@ -249,5 +248,4 @@ extern void rtk_multi_merge_fxhr(rtk_multi_t *rtk_multi)
     assert( rtk_history_is_valid(hypothesis) );
     
     rtk_copy(rtk, rtk_multi->rtk_out);
-    
 }
