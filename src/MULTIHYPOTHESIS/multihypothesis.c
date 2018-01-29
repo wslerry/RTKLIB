@@ -486,7 +486,7 @@ extern void rtk_multi_estimate(rtk_multi_t *rtk_multi,
     int i;
     rtk_history_t *hypothesis;
     rtk_multi_single_iteration_args_t args[MAX_RTK_HYPOTHESES];
-    pthread_t threads[MAX_RTK_HYPOTHESES];
+    thread_t threads[MAX_RTK_HYPOTHESES];
     
     assert( rtk_multi_is_valid(rtk_multi) );
     assert( rtk_multi_strategy_is_valid(rtk_multi_strategy) );
