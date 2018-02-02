@@ -2496,6 +2496,9 @@ extern void rtkinit(rtk_t *rtk, const prcopt_t *opt)
             rtk->ssat[sat].no_fix[freq]   = 0;
         }
     }
+    
+    rtk->is_alternative_fix_possible = 0;
+    rtk->sol_alternative = sol0;
 }
 /* free rtk control ------------------------------------------------------------
 * free memory for rtk control struct

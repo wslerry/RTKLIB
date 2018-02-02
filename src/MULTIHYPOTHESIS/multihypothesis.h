@@ -3,8 +3,8 @@
 
 #include "rtklib.h"
 
-#define MAX_RTK_HYPOTHESES 10        /* max number of hypotheses */
-#define MAX_RTK_QUEUE      300       /* max number of epochs stored */
+#define MAX_RTK_HYPOTHESES 5         /* max number of hypotheses */
+#define MAX_RTK_QUEUE      150       /* max number of epochs stored */
 
 #define SQR(x) ((x) * (x))
 
@@ -38,9 +38,9 @@ typedef struct {
 
 typedef struct {
 
-    obsd_t *obsd;
-    int     n_obsd;
-    nav_t  *nav;
+    obsd_t *obsd;                   /* observation data */
+    int     n_obsd;                 /* number of data records */
+    nav_t  *nav;                    /* navigation data */
 
 } rtk_input_data_t;
 
@@ -65,8 +65,8 @@ extern rtk_history_t *rtk_history_init(prcopt_t opt);
 extern int rtk_history_is_valid(const rtk_history_t *rtk_history);
 extern void rtk_history_free(rtk_history_t *rtk_history);
 
-extern void rtk_history_cut(rtk_history_t *rtk_history, int index_cut);
 extern void rtk_history_add(rtk_history_t *rtk_history, const rtk_t *rtk);
+extern void rtk_history_cut(rtk_history_t *rtk_history, int n_cut);
 extern int  rtk_history_is_empty(const rtk_history_t *rtk_history);
 extern void rtk_history_clear(rtk_history_t *rtk_history);
 extern rtk_t *rtk_history_get_pointer(const rtk_history_t *rtk_history, int index);
@@ -83,7 +83,7 @@ extern int rtk_multi_is_valid(const rtk_multi_t *rtk_multi);
 extern void rtk_multi_free(rtk_multi_t *rtk_multi);
 
 extern int rtk_multi_add(rtk_multi_t *rtk_multi, rtk_t *rtk);
-extern int rtk_multi_exclude(rtk_multi_t *rtk_multi, int index);
+extern void rtk_multi_exclude(rtk_multi_t *rtk_multi, int index);
 
 extern void rtk_multi_estimate(rtk_multi_t *rtk_multi,
                                const rtk_multi_strategy_t *rtk_multi_strategy, 
