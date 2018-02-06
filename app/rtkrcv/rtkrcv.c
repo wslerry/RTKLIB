@@ -62,8 +62,8 @@ static const char rcsid[]="$Id:$";
 #define OPTSDIR     "."                 /* default config directory */
 #define OPTSFILE    "rtkrcv.conf"       /* default config file */
 #define NAVIFILE    "rtkrcv.nav"        /* navigation save file */
-#define STATFILE    "rtkrcv_%Y%m%d%h%M.stat"  /* solution status file */
-#define TRACEFILE   "rtkrcv_%Y%m%d%h%M.trace" /* debug trace file */
+#define STATFILE    "/tmp/rtkrcv/rtkrcv_%Y%m%d%h%M.stat"  /* solution status file */
+#define TRACEFILE   "/tmp/rtkrcv/rtkrcv_%Y%m%d%h%M.trace" /* debug trace file */
 #define INTKEEPALIVE 1000               /* keep alive interval (ms) */
 
 #define ESC_CLEAR   "\033[H\033[2J"     /* ansi/vt100 escape: erase screen */
@@ -1666,8 +1666,9 @@ static void accept_sock(int ssock, con_t **con)
 int main(int argc, char **argv)
 {
     con_t *con[MAXCON]={0};
-    int i,start=0,port=0,outstat=0,trace=0,sock=0;
+    int i,start=0,port=0,outstat=0,trace=2,sock=0;
     char *dev="",file[MAXSTR]="";
+    struct stat st;
 
     for (i=1;i<argc;i++) {
         if      (!strcmp(argv[i],"-s")) start=1;
@@ -1682,6 +1683,10 @@ int main(int argc, char **argv)
         else printusage();
     }
     if (trace>0) {
+        if (stat("/tmp/rtkrcv", &st) == -1) {
+            
+            mkdir("/tmp/rtkrcv", 0700);
+        }
         traceopen(TRACEFILE);
         tracelevel(trace);
     }

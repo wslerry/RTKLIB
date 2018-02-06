@@ -20,6 +20,7 @@ extern rtk_multi_t *rtk_multi_init_fxhr(prcopt_t opt)
     rtk = rtk_init(&opt);
     index_new = rtk_multi_add(rtk_multi, rtk);
     rtk_multi->hypotheses[index_new]->target_solution_status = SOLQ_FLOAT;
+    rtk_multi->index_main = index_new;
     
     assert( index_new == 0 );
     
@@ -329,12 +330,14 @@ extern void rtk_multi_merge_fxhr(rtk_multi_t *rtk_multi)
         hypothesis = rtk_multi->hypotheses[0];
         rtk = rtk_history_get_pointer_to_last(hypothesis);
         rtk->sol.ratio = ratio_float;
+        rtk_multi->index_main = 0;
     }
     
     if ( rtk_multi->n_hypotheses > 1 ) { /* output fix */
         
         hypothesis = rtk_multi->hypotheses[1];
         rtk = rtk_history_get_pointer_to_last(hypothesis);
+        rtk_multi->index_main = 1;
     }
     
     assert( rtk_history_is_valid(hypothesis) );

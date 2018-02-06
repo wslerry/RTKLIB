@@ -31,6 +31,7 @@ typedef struct {
     
     int      n_hypotheses;         /* number of active hypotheses */
     rtk_history_t *hypotheses[MAX_RTK_HYPOTHESES];
+    int      index_main;           /* index of the main hypothesis (-1 means is not defined) */
     rtk_t   *rtk_out;              /* resulting rtk solution structure to output */
     prcopt_t opt;                  /* processing options */
     
@@ -41,7 +42,7 @@ typedef struct {
     obsd_t *obsd;                   /* observation data */
     int     n_obsd;                 /* number of data records */
     nav_t  *nav;                    /* navigation data */
-
+    
 } rtk_input_data_t;
 
 typedef void (*rtk_multi_split_fpt)   (rtk_multi_t *, const rtk_input_data_t *);
@@ -85,9 +86,11 @@ extern void rtk_multi_free(rtk_multi_t *rtk_multi);
 extern int rtk_multi_add(rtk_multi_t *rtk_multi, rtk_t *rtk);
 extern void rtk_multi_exclude(rtk_multi_t *rtk_multi, int index);
 
-extern void rtk_multi_estimate(rtk_multi_t *rtk_multi,
-                               const rtk_multi_strategy_t *rtk_multi_strategy, 
-                               const rtk_input_data_t *rtk_input_data);
+extern void rtk_multi_estimate_main(rtk_multi_t *rtk_multi,
+                                    const rtk_input_data_t *rtk_input_data);
+extern void rtk_multi_process(rtk_multi_t *rtk_multi,
+                              const rtk_multi_strategy_t *rtk_multi_strategy, 
+                              const rtk_input_data_t *rtk_input_data);
 
 /* rtk_multi_strategy */
 

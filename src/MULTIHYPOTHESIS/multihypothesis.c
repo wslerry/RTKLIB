@@ -102,6 +102,7 @@ static void rtk_queue_cut(rtk_queue_t *rtk_queue, int n_cut)
     int offsets_cut[MAX_RTK_QUEUE];
     
     assert( rtk_queue_is_valid(rtk_queue) );
+    assert( n_cut >= 0 );
     
     if ( n_cut > rtk_queue->length ) {
         
@@ -264,7 +265,6 @@ extern rtk_t *rtk_history_get_pointer(const rtk_history_t *rtk_history, int inde
 
 extern rtk_t *rtk_history_get_pointer_to_last(const rtk_history_t *rtk_history)
 {
-    assert( rtk_history_is_valid(rtk_history) );
 
     return rtk_history_get_pointer(rtk_history, 0);
 }
@@ -348,6 +348,7 @@ extern rtk_multi_t *rtk_multi_init(prcopt_t opt)
         }
     }
     rtk_multi->n_hypotheses = 0;
+    rtk_multi->index_main = -1;
     
     return rtk_multi;
 }
@@ -387,6 +388,10 @@ extern int rtk_multi_is_valid(const rtk_multi_t *rtk_multi)
     }
     if ( n_hypotheses != rtk_multi->n_hypotheses ) {
 
+        return 0;
+    }
+    if ( (rtk_multi->index_main < -1) || (rtk_multi->index_main >= MAX_RTK_HYPOTHESES) ) {
+        
         return 0;
     }
 
@@ -442,6 +447,30 @@ extern void rtk_multi_exclude(rtk_multi_t *rtk_multi, int index)
     
     rtk_history_clear(rtk_multi->hypotheses[index]);
     rtk_multi->n_hypotheses--;
+    
+    if ( rtk_multi->index_main == index ) {
+        
+        rtk_multi->index_main = -1;
+    }
+}
+
+static void rtk_history_step(rtk_history_t *rtk_history,
+                             const rtk_input_data_t *rtk_input_data)
+{
+    rtk_t *rtk;
+    rtk_t *rtk_last;
+    
+    assert( rtk_history_is_valid(rtk_history) );
+    assert( !rtk_history_is_empty(rtk_history) );
+    assert( rtk_input_data_is_valid(rtk_input_data) );
+    
+    rtk_last = rtk_history_get_pointer_to_last(rtk_history);
+    rtk = rtk_init(&rtk_last->opt);
+    rtk_copy(rtk_last, rtk);
+    rtkpos(rtk, rtk_input_data->obsd, rtk_input_data->n_obsd, rtk_input_data->nav);
+    rtk_history_add(rtk_history, rtk);
+    rtk_free(rtk);
+    
 }
 
 typedef struct {
@@ -449,33 +478,49 @@ typedef struct {
     rtk_history_t *rtk_history;
     const rtk_input_data_t *rtk_input_data;
     
-} rtk_multi_single_iteration_args_t;
-
+} rtk_history_step_thread_args_t;
 
 #ifdef WIN32
-static DWORD WINAPI rtk_multi_single_iteration(void *args)
+static DWORD WINAPI rtk_history_step_thread(void *args)
 #else
-static void *rtk_multi_single_iteration(void *args)
+static void *rtk_history_step_thread(void *args)
 #endif
 {
-    rtk_multi_single_iteration_args_t *args_ = (rtk_multi_single_iteration_args_t *) args;
-    rtk_history_t *hypothesis = args_->rtk_history;
+    rtk_history_step_thread_args_t *args_ = (rtk_history_step_thread_args_t *) args;
+    rtk_history_t *rtk_history = args_->rtk_history;
     const rtk_input_data_t *rtk_input_data = args_->rtk_input_data;
+    
+    rtk_history_step(rtk_history, rtk_input_data);
+    
+    return NULL;
+}
+
+extern void rtk_multi_estimate_main(rtk_multi_t *rtk_multi,
+                                    const rtk_input_data_t *rtk_input_data)
+{
+    int index_main = rtk_multi->index_main;
+    rtk_history_t *hypothesis_main;
     rtk_t *rtk;
     rtk_t *rtk_last;
-    
-    assert( rtk_history_is_valid(hypothesis) );
-    assert( !rtk_history_is_empty(hypothesis) );
+
+    assert( rtk_multi_is_valid(rtk_multi) );
     assert( rtk_input_data_is_valid(rtk_input_data) );
+    assert( index_main >= 0 );
     
-    rtk_last = rtk_history_get_pointer_to_last(hypothesis);
+    hypothesis_main = rtk_multi->hypotheses[index_main];
+    
+    if ( rtk_history_is_empty(hypothesis_main) ) {
+        
+        return;
+    }
+    
+    rtk_last = rtk_history_get_pointer_to_last(hypothesis_main);
     rtk = rtk_init(&rtk_last->opt);
     rtk_copy(rtk_last, rtk);
     rtkpos(rtk, rtk_input_data->obsd, rtk_input_data->n_obsd, rtk_input_data->nav);
-    rtk_history_add(hypothesis, rtk);
+    rtk_copy(rtk, rtk_multi->rtk_out);
     rtk_free(rtk);
     
-    return NULL;
 }
 
 static void rtk_multi_step(rtk_multi_t *rtk_multi,
@@ -483,28 +528,30 @@ static void rtk_multi_step(rtk_multi_t *rtk_multi,
 {
     int i;
     rtk_history_t *hypothesis;
-    rtk_multi_single_iteration_args_t args[MAX_RTK_HYPOTHESES];
+    rtk_history_step_thread_args_t args[MAX_RTK_HYPOTHESES];
     thread_t threads[MAX_RTK_HYPOTHESES];
+    int is_thread_active[MAX_RTK_HYPOTHESES] = {0}; 
 
     for (i = 0; i < MAX_RTK_HYPOTHESES; i++) {
         
         hypothesis = rtk_multi->hypotheses[i];
         if ( rtk_history_is_empty(hypothesis) ) continue;
+        
+        is_thread_active[i] = 1;
 
         args[i].rtk_history    = hypothesis;
         args[i].rtk_input_data = rtk_input_data;
         
 #ifdef WIN32
-        threads[i] = CreateThread(NULL, 0, rtk_multi_single_iteration, &args[i], 0, NULL);
+        threads[i] = CreateThread(NULL, 0, rtk_history_step_thread, &args[i], 0, NULL);
 #else
-        pthread_create(&threads[i], NULL, rtk_multi_single_iteration, (void *) &args[i]);
+        pthread_create(&threads[i], NULL, rtk_history_step_thread, (void *) &args[i]);
 #endif
     }
     
     for (i = 0; i < MAX_RTK_HYPOTHESES; i++) {
         
-        hypothesis = rtk_multi->hypotheses[i];
-        if ( rtk_history_is_empty(hypothesis) ) continue;
+        if ( !is_thread_active[i] ) continue;
         
 #ifdef WIN32
         WaitForSingleObject(threads[i], INFINITE);
@@ -513,6 +560,7 @@ static void rtk_multi_step(rtk_multi_t *rtk_multi,
         pthread_join(threads[i], NULL);
 #endif
     }
+    
 }
 
 static void rtk_multi_update_base_pos(rtk_multi_t * rtk_multi)
@@ -532,21 +580,40 @@ static void rtk_multi_update_base_pos(rtk_multi_t * rtk_multi)
     }
 }
 
-extern void rtk_multi_estimate(rtk_multi_t *rtk_multi,
-                               const rtk_multi_strategy_t *rtk_multi_strategy, 
-                               const rtk_input_data_t *rtk_input_data)
+extern void rtk_multi_process(rtk_multi_t *rtk_multi,
+                              const rtk_multi_strategy_t *rtk_multi_strategy, 
+                              const rtk_input_data_t *rtk_input_data)
 {   
+    unsigned int tick = tickget();
+    
     assert( rtk_multi_is_valid(rtk_multi) );
     assert( rtk_multi_strategy_is_valid(rtk_multi_strategy) );
     assert( rtk_input_data_is_valid(rtk_input_data) );
-
+    
+    trace(2, "rtk_multi_process\n");
+    
     rtk_multi_update_base_pos(rtk_multi);
-
+    
+    trace(2, "rtk_multi_process: update_base_pos, %d [ms]\n", (int) (tickget() - tick));
+    tick = tickget();
+    
     rtk_multi_strategy->split(rtk_multi, rtk_input_data);
     
+    trace(2, "rtk_multi_process: split, %d [ms]\n", (int) (tickget() - tick));
+    tick = tickget();
+    
     rtk_multi_step(rtk_multi, rtk_input_data);
+    
+    trace(2, "rtk_multi_process: step, %d [ms]\n", (int) (tickget() - tick));
+    tick = tickget();
 
     rtk_multi_strategy->qualify(rtk_multi);
     
+    trace(2, "rtk_multi_process: qualify, %d [ms]\n", (int) (tickget() - tick));
+    tick = tickget();
+    
     rtk_multi_strategy->merge(rtk_multi);
+    
+    trace(2, "rtk_multi_process: merge, %d [ms]\n", (int) (tickget() - tick));
+    tick = tickget();
 }

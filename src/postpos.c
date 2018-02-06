@@ -464,7 +464,7 @@ static void procpos(FILE *fp, FILE *fptm, const prcopt_t *popt, const solopt_t *
             rtk_input_data->obsd = obs;
             rtk_input_data->n_obsd = n;
             rtk_input_data->nav = &navs;
-            rtk_multi_estimate(rtk_multi, &rtk_multi_strategy_fxhr, rtk_input_data);
+            rtk_multi_process(rtk_multi, &rtk_multi_strategy_fxhr, rtk_input_data);
             assert( rtk_multi_is_valid_fxhr(rtk_multi) );
         }
         else { /* multihypothesis mode off */

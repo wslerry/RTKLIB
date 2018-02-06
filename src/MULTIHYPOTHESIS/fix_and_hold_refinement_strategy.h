@@ -19,7 +19,7 @@
 #define RTK_POS_THRESH_FXHR        0.1    /* min 3D distance between solutions to distinguish */
 #define MIN_ALTERNATIVE_FIXES_FXHR 10     /* min number of alternative fixes (epochs) 
                                              to discard fix hypothesis */
-#define RESID_FINE_TRESH_FXHR      0.01   /* don't discard fix if RMS of phase residuals is fine [m] */
+#define RESID_FINE_TRESH_FXHR      0.01   /* don't discard fix if RMS of phase residuals are fine [m] */
 
 extern rtk_multi_t *rtk_multi_init_fxhr(prcopt_t opt);
 extern int rtk_multi_is_valid_fxhr(const rtk_multi_t *rtk_multi);
