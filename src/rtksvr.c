@@ -1005,7 +1005,6 @@ static int rtksvr_compute_solution(rtksvr_t *svr, int rover_data_index, rtk_t *r
 {
     rtk_input_data_t *rtk_input_data;
     
-    
     assert( svr != NULL );
     assert( rover_data_index >= 0 );
     assert( rover_data_index < MAXOBSBUF );
@@ -1038,12 +1037,8 @@ static int rtksvr_compute_solution_multi(rtksvr_t *svr, int rover_data_index, rt
         return 0;
     }
     
-    /* update processing options (including base position) */
-    rtk_multi->opt = svr->rtk.opt;
-    memcpy(rtk_multi->opt.rb, svr->rtk.rb, sizeof(double) * 3);
-    
     /* rtk positioning */
-    rtk_multi_estimate(rtk_multi, &rtk_multi_strategy_fxhr, rtk_input_data);
+    rtk_multi_estimate_main(rtk_multi, rtk_input_data);
     assert( rtk_multi_is_valid_fxhr(rtk_multi) );
     
     return 1;
@@ -1069,7 +1064,9 @@ static void *rtksvrthread(void *arg)
     int    navsys = svr->rtk.opt.navsys;
     gtime_t time_base, time_rover, time_last;
     int ntrip_single_required = 0;
-    rtk_t *rtk_tmp = rtk_init(&svr->rtk.opt);
+    rtk_input_data_t *rtk_input_data;
+    int is_fix_and_hold_refinement_option_is_on = (svr->rtk.opt.multihyp_mode) 
+                                               && (svr->rtk.opt.modear == ARMODE_FIXHOLD);
 
     /* This "fake" solution structure is passed to strsendnmea
      * when inpstr2-nmeareq is set to latlon*/
@@ -1170,27 +1167,45 @@ static void *rtksvrthread(void *arg)
             }
         }
         
-        for (i = 0; i < fobs[0]; i++) { /* for each rover observation data */
-
-            if ( (svr->rtk.opt.multihyp_mode) && (svr->rtk.opt.modear == ARMODE_FIXHOLD) ) { /* multihypothesis mode on */
+        /* produce position estimation */
+        if ( is_fix_and_hold_refinement_option_is_on ) {
+            
+            if ( fobs[0] > 0 ) {
                 
-                rtksvr_compute_solution_multi(svr, i, rtk_multi);
+                /* update base pos */
+                rtk_multi->opt = svr->rtk.opt;
+                memcpy(rtk_multi->opt.rb, svr->rtk.rb, sizeof(double) * 3);
+                
+                rtksvr_compute_solution_multi(svr, fobs[0]-1, rtk_multi);
                 rtk_copy(rtk_multi->rtk_out, &svr->rtk);
                 svr->rtk.opt = rtk_multi->opt;
+                
+                if ( svr->rtk.sol.stat != SOLQ_NONE ) {
+                
+                    /* adjust current time */
+                    tt = (int) (tickget() - tick) / 1000.0 + DTTOL;
+                    timeset(gpst2utc(timeadd(svr->rtk.sol.time, tt)));
+                
+                    /* write solution */
+                    writesol(svr, 0);
+                }
             }
-            else { /* multihypothesis mode off */
+        }
+        else { /* !is_fix_and_hold_refinement_option_is_on */
+                
+            for (i = 0; i < fobs[0]; i++) {
                 
                 rtksvr_compute_solution(svr, i, &svr->rtk); 
-            }
-            
-            if ( svr->rtk.sol.stat != SOLQ_NONE ) {
+                
+                if ( svr->rtk.sol.stat != SOLQ_NONE ) {
 
-                /* adjust current time */
-                tt = (int) (tickget() - tick) / 1000.0 + DTTOL;
-                timeset(gpst2utc(timeadd(svr->rtk.sol.time, tt)));
+                    /* adjust current time */
+                    tt = (int) (tickget() - tick) / 1000.0 + DTTOL;
+                    timeset(gpst2utc(timeadd(svr->rtk.sol.time, tt)));
 
-                /* write solution */
-                writesol(svr, i);
+                    /* write solution */
+                    writesol(svr, i);
+                }
             }
         }
         
@@ -1212,7 +1227,32 @@ static void *rtksvrthread(void *arg)
         }
         if ((cputime=(int)(tickget()-tick))>0) svr->cputime=cputime;
 
+        if ( fobs[0] > 0 ) {
+            
+            trace(2, "rtkrcv calc cycle: %d [ms]\n", cputime);
+            
+            if ( is_fix_and_hold_refinement_option_is_on ) {
+                
+                trace(2, "rtk_multi status: solstat = %d, nhyp = %d\n", rtk_multi->rtk_out->sol.stat,
+                                                                        rtk_multi->n_hypotheses);
+            }
+        }
+        
+        /* rtk_multi processing */
+        if ( is_fix_and_hold_refinement_option_is_on ) {
+            
+            for (i = 0; i < fobs[0]; i++) { /* for each rover observation data */
+                
+                rtksvrlock(svr);
+                rtk_input_data = rtksvr_get_input_data(svr, i);
+                rtksvrunlock(svr);
+                
+                rtk_multi_process(rtk_multi, &rtk_multi_strategy_fxhr, rtk_input_data);
+            }
+        }
+        
         /* sleep until next cycle */
+        cputime = (int) (tickget() - tick);
         sleepms(svr->cycle - cputime);
     }
     
@@ -1228,8 +1268,6 @@ static void *rtksvrthread(void *arg)
         svr->nsb[i]=0;
         free(svr->sbuf[i]); svr->sbuf[i]=NULL;
     }
-
-    free(rtk_tmp);
     
     return 0;
 }
