@@ -323,7 +323,7 @@ void MainWindow::BtnPlotClick()
     QString file5=OutFile5->text();
     QString file6=OutFile6->text();
     QString file[]={file1,file2,file3,file4,file5,file6};
-    QString cmd1="rtkplot_Qt",cmd2="..\\..\\..\\bin\\rtkplot_qt",opts=" -r";
+    QString cmd1="./rtkplot_qt",cmd2="./RTKPLOT_Qt-x86_64.AppImage",cmd3="rtkplot_qt",opts=" -r";
     QCheckBox *cb[]={
         OutFileEna1,OutFileEna2,OutFileEna3,OutFileEna4,OutFileEna5,OutFileEna6
     };
@@ -336,15 +336,14 @@ void MainWindow::BtnPlotClick()
     }
     if (opts==" -r") return;
 
-    if (!ExecCmd(cmd1+opts)&&!ExecCmd(cmd2+opts)) {
+    if (!ExecCmd(cmd1+opts)&&!ExecCmd(cmd2+opts)&&!ExecCmd(cmd3+opts)) {
         Message->setText(tr("error : rtkplot execution"));
     }
 }
 // callback on button-post-proc ---------------------------------------------
 void MainWindow::BtnPostClick()
 {
-    QString path2="..\\..\\..\\bin\\";
-    QString cmd1=CmdPostExe,cmd2=path2+CmdPostExe,opts=" ";
+    QString cmd1=CmdPostExe,cmd2="./RTKPOST_Qt-x86_64.AppImage",cmd3="rtkpost_qt",opts=" ";
 
     if (!OutFileEna1->isChecked()) return;
 
@@ -359,7 +358,7 @@ void MainWindow::BtnPostClick()
     if (TimeIntF  ->isChecked()) opts=opts+" -ti "+TimeInt->currentText();
     if (TimeUnitF ->isChecked()) opts=opts+" -tu "+TimeUnit->text();
 
-    if (!ExecCmd(cmd1+opts)&&!ExecCmd(cmd2+opts)) {
+    if (!ExecCmd(cmd1+opts)&&!ExecCmd(cmd2+opts)&&!ExecCmd(cmd3+opts)) {
         Message->setText(tr("error : rtkpost execution"));
     }
 }
@@ -953,7 +952,7 @@ void MainWindow::LoadOpt(void)
     TextViewer::FontD.setFamily(ini.value ("viewer/fontname","Courier New").toString());
     TextViewer::FontD.setPointSize(ini.value("viewer/fontsize",9).toInt());
 
-    CmdPostExe         =ini.value  ("set/cmdpostexe","rtkpost_qt").toString();
+    CmdPostExe         =ini.value  ("set/cmdpostexe","./rtkpost_qt").toString();
 
     UpdateEnable();
 }

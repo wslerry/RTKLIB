@@ -434,11 +434,12 @@ void MainForm::BtnPlotClick()
 {
     QString OutputFile_Text=OutputFile->currentText();
     QString file=FilePath(OutputFile_Text);
-    QString cmd1="rtkplot_qt",cmd2="../../../bin/rtkplot_qt",opts="";
+    QString cmd1="./rtkplot_qt",cmd2="./RTKPLOT_Qt-x86_64.AppImage", cmd3="rtkplot_qt";
+    QString opts="";
     
-    opts+=" \""+file+"\"";
-    
-    if (!ExecCmd(cmd1+opts,1)&&!ExecCmd(cmd2+opts,1)) {
+    opts+=" "+file;
+
+    if (!ExecCmd(cmd1+opts,1)&&!ExecCmd(cmd2+opts,1)&&!ExecCmd(cmd3+opts,1)) {
         ShowMsg("error : rtkplot_qt execution");
     }
 }
@@ -1304,7 +1305,7 @@ void MainForm::LoadOpt(void)
     PrNoise5           =ini.value("opt/prnoise5",       prcopt.prn[4]).toDouble();
 
     RovPosType         =ini.value("opt/rovpostype",     prcopt.rovpos).toInt();
-    RefPosType         =ini.value("opt/refpostype",     prcopt.refpos+5).toInt();
+    RefPosType         =ini.value("opt/refpostype",     POSOPT_SINGLE+2).toInt();
     RovPos[0]          =ini.value("opt/rovpos1",        prcopt.ru[0]).toDouble();
     RovPos[1]          =ini.value("opt/rovpos2",        prcopt.ru[1]).toDouble();
     RovPos[2]          =ini.value("opt/rovpos3",        prcopt.ru[2]).toDouble();
