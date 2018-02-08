@@ -207,7 +207,7 @@ const prcopt_t prcopt_default={ /* defaults processing options */
     .sbascorr=0,        .sbassatsel=0,  .rovpos=0,
     .refpos=3,          .eratio={300.0,100.0},
     .err={100.0,0.003,0.003,0.0,1.0},
-
+    .posopt[4]=1, /* raim_fde */
     .smoothing_mode=0,      .smoothing_window=100,
     .smoothing_varratio=0.2,
     .base_multi_epoch=0,
