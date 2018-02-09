@@ -1188,7 +1188,7 @@ static int ddres(rtk_t *rtk, const nav_t *nav, const obsd_t *obs, double dt, con
                  double *H, double *R, int *vflg)
 {
     prcopt_t *opt=&rtk->opt;
-    smoothing_data_t *smoothing_data = &rtk->smoothing_data;
+    smoothing_data_t *smoothing_data = rtk->smoothing_data;
     double bl,dr[3],posu[3],posr[3],didxi=0.0,didxj=0.0,*im,icb;
     double *tropr,*tropu,*dtdxr,*dtdxu,*Ri,*Rj,lami,lamj,fi,fj,df,*Hi=NULL;
     int i,j,k,m,f,ff,nv=0,nb[NFREQ*4*2+2]={0},b=0,sysi,sysj,nf=NF(opt);
@@ -1448,7 +1448,7 @@ static double intpres(gtime_t time, const obsd_t *obs, int n, const nav_t *nav,
     
     satposs(time,obsb,nb,nav,opt->sateph,rs,dts,var,svh);
     
-    if (!zdres(1,obsb,&rtk->smoothing_data,nb,rs,dts,svh,nav,rtk->rb,opt,1,yb,e,azel)) {
+    if (!zdres(1,obsb,rtk->smoothing_data,nb,rs,dts,svh,nav,rtk->rb,opt,1,yb,e,azel)) {
         return tt;
     }
     for (i=0;i<n;i++) {
@@ -1984,7 +1984,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     /* calculate [range - measured pseudorange] for base station (phase and code)
          output is in y[nu:nu+nr], see call for rover below for more details       */
     trace(3,"base station:\n");
-    if (!zdres(1,obs+nu,&rtk->smoothing_data,nr,rs+nu*6,dts+nu*2,svh+nu,nav,rtk->rb,opt,1,
+    if (!zdres(1,obs+nu,rtk->smoothing_data,nr,rs+nu*6,dts+nu*2,svh+nu,nav,rtk->rb,opt,1,
                y+nu*nf*2,e+nu*3,azel+nu*2)) {
         errmsg(rtk,"initial base station position error\n");
         
@@ -2032,7 +2032,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
                 e    = line of sight unit vectors to sats
                 azel = [az, el] to sats                                   */
         trace(3,"rover:\n");
-        if (!zdres(0,obs,&rtk->smoothing_data,nu,rs,dts,svh,nav,xp,opt,0,y,e,azel)) {
+        if (!zdres(0,obs,rtk->smoothing_data,nu,rs,dts,svh,nav,xp,opt,0,y,e,azel)) {
             errmsg(rtk,"rover initial position error\n");
             stat=SOLQ_NONE;
             break;
@@ -2067,7 +2067,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
         trace(4,"x(%d)=",i+1); tracemat(4,xp,1,NR(opt),13,4);
     }
     /* calc zero diff residuals again after kalman filter update */
-    if (stat!=SOLQ_NONE&&zdres(0,obs,&rtk->smoothing_data,nu,rs,dts,svh,nav,xp,opt,0,y,e,azel)) {
+    if (stat!=SOLQ_NONE&&zdres(0,obs,rtk->smoothing_data,nu,rs,dts,svh,nav,xp,opt,0,y,e,azel)) {
         
         /* calc double diff residuals again after kalman filter update for float solution */
         nv=ddres(rtk,nav,obs,dt,xp,Pp,sat,y,e,azel,iu,ir,ns,v,NULL,R,vflg);
@@ -2114,7 +2114,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
         if (manage_amb_LAMBDA(rtk,bias,xa,sat,nf,ns)>1) {
     
             /* find zero-diff residuals for fixed solution */
-            if (zdres(0,obs,&rtk->smoothing_data,nu,rs,dts,svh,nav,xa,opt,0,y,e,azel)) {
+            if (zdres(0,obs,rtk->smoothing_data,nu,rs,dts,svh,nav,xa,opt,0,y,e,azel)) {
                 
                 /* post-fit residuals for fixed solution (xa includes fixed phase biases, rtk->xa does not) */
                 nv=ddres(rtk,nav,obs,dt,xa,NULL,sat,y,e,azel,iu,ir,ns,v,NULL,R,vflg);
@@ -2451,8 +2451,7 @@ extern void rtkinit(rtk_t *rtk, const prcopt_t *opt)
     sol_t sol0={{0}};
     ambc_t ambc0={{{0}}};
     ssat_t ssat0={0};
-    int i, j, k;
-    int sat, freq;
+    int i;
     
     trace(3,"rtkinit :\n");
     
@@ -2479,23 +2478,8 @@ extern void rtkinit(rtk_t *rtk, const prcopt_t *opt)
     for (i=0;i<MAXERRMSG;i++) rtk->errbuf[i]=0;
     rtk->opt=*opt;
     rtk->initial_mode=rtk->opt.mode;
-    for (i = 0; i < MAXRCV_SMOOTH; i++)
-        for (j = 0; j < MAXSAT; j++)
-            for (k = 0; k < MAXFREQ; k++) {
-                rtk->smoothing_data.P_smooth [i][j][k] = 0.0;
-                rtk->smoothing_data.L        [i][j][k] = 0.0;
-                rtk->smoothing_data.D        [i][j][k] = 0.0;
-                rtk->smoothing_data.count    [i][j][k] = 0;
-                rtk->smoothing_data.direction[i][j][k] = 1;
-                rtk->smoothing_data.slip     [i][j][k] = 0;
-            }
-            
-    for (sat = 0; sat < MAXSAT; sat++) {
-        for (freq = 0; freq < rtk->opt.nf; freq++) {
-            rtk->ssat[sat].to_reset[freq] = 0;
-            rtk->ssat[sat].no_fix[freq]   = 0;
-        }
-    }
+    
+    rtk->smoothing_data = NULL;
     
     rtk->is_alternative_fix_possible = 0;
     rtk->sol_alternative = sol0;
@@ -2581,7 +2565,6 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     gtime_t time_base_last;
     int i,nu,nr;
     char msg[128]="";
-    int sat, freq;
     int residual_maxiter = opt->residual_maxiter;
 
     trace(3,"rtkpos  : time=%s n=%d\n",time_str(obs[0].time,3),n);
@@ -2598,18 +2581,8 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
 
     time=rtk->sol.time; /* previous epoch */
     
-    /* carrier-smoothing of code measurements */
-    if (opt->smoothing_mode) {
-        for (i = 0; i < (nu + nr); i++) {
-            sat = obs[i].sat - 1;
-            for (freq = 0; freq < opt->nf; freq++) {
-                smoothing_carrier(obs[i], rtk, freq, nav->lam[sat][freq], opt->smoothing_window);
-            }
-        }
-    }
-    
     /* rover position by single point positioning */
-    if (!pntpos(obs,nu,nav,&rtk->smoothing_data,&rtk->opt,&rtk->sol,NULL,rtk->ssat,msg)) {
+    if (!pntpos(obs,nu,nav,rtk->smoothing_data,&rtk->opt,&rtk->sol,NULL,rtk->ssat,msg)) {
         errmsg(rtk,"point pos error (%s)\n",msg);
         
         if (!rtk->opt.dynamics) {
@@ -2650,7 +2623,7 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     if (opt->mode==PMODE_MOVEB) { /*  moving baseline */
         
         /* estimate position/velocity of base station */
-        if (!pntpos(obs+nu,nr,nav,&rtk->smoothing_data,&rtk->opt,&solb,NULL,NULL,msg)) {
+        if (!pntpos(obs+nu,nr,nav,rtk->smoothing_data,&rtk->opt,&solb,NULL,NULL,msg)) {
             errmsg(rtk,"base station position error (%s)\n",msg);
             return 0;
         }

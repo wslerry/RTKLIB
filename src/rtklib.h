@@ -1310,7 +1310,7 @@ typedef struct {        /* RTK control/result type */
     char errbuf[MAXERRMSG]; /* error message buffer */
     prcopt_t opt;       /* processing options */
     int initial_mode;   /* initial positioning mode */
-    smoothing_data_t smoothing_data; /* data related to smoothing of code */
+    smoothing_data_t *smoothing_data; /* data related to smoothing of code */
     int is_alternative_fix_possible;
     sol_t sol_alternative;          
 } rtk_t;
