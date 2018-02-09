@@ -1001,6 +1001,14 @@ static rtk_input_data_t *rtksvr_get_input_data(rtksvr_t *svr, int rover_data_ind
     return rtk_input_data;
 }
 
+static void rtksvr_free_input_data(rtk_input_data_t *rtk_input_data)
+{
+    assert( rtk_input_data_is_valid(rtk_input_data) );
+    
+    free(rtk_input_data->obsd);
+    free(rtk_input_data);
+}
+
 static int rtksvr_compute_solution(rtksvr_t *svr, int rover_data_index, rtk_t *rtk)
 {
     rtk_input_data_t *rtk_input_data;
@@ -1018,6 +1026,8 @@ static int rtksvr_compute_solution(rtksvr_t *svr, int rover_data_index, rtk_t *r
     
     /* rtk positioning */
     rtkpos(rtk, rtk_input_data->obsd, rtk_input_data->n_obsd, rtk_input_data->nav);
+    
+    rtksvr_free_input_data(rtk_input_data);
     
     return 1;
 }
@@ -1040,6 +1050,8 @@ static int rtksvr_compute_solution_multi(rtksvr_t *svr, int rover_data_index, rt
     /* rtk positioning */
     rtk_multi_estimate_main(rtk_multi, rtk_input_data);
     assert( rtk_multi_is_valid_fxhr(rtk_multi) );
+    
+    rtksvr_free_input_data(rtk_input_data);
     
     return 1;
 }
@@ -1248,6 +1260,7 @@ static void *rtksvrthread(void *arg)
                 rtksvrunlock(svr);
                 
                 rtk_multi_process(rtk_multi, &rtk_multi_strategy_fxhr, rtk_input_data);
+                rtksvr_free_input_data(rtk_input_data);
             }
         }
         
