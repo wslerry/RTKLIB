@@ -4,7 +4,7 @@
 #include "rtklib.h"
 
 #define MAX_RTK_HYPOTHESES 2         /* max number of hypotheses */
-#define MAX_RTK_QUEUE      100       /* max number of epochs stored */
+#define MAX_RTK_QUEUE      150       /* max number of epochs stored */
 
 #define SQR(x) ((x) * (x))
 

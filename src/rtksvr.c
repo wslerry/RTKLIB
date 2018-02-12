@@ -1077,8 +1077,8 @@ static void *rtksvrthread(void *arg)
     gtime_t time_base, time_rover, time_last;
     int ntrip_single_required = 0;
     rtk_input_data_t *rtk_input_data;
-    int is_fix_and_hold_refinement_option_is_on = (svr->rtk.opt.multihyp_mode) 
-                                               && (svr->rtk.opt.modear == ARMODE_FIXHOLD);
+    int is_fix_and_hold_refinement_option_on = (svr->rtk.opt.multihyp_mode) 
+                                            && (svr->rtk.opt.modear == ARMODE_FIXHOLD);
 
     /* This "fake" solution structure is passed to strsendnmea
      * when inpstr2-nmeareq is set to latlon*/
@@ -1140,6 +1140,9 @@ static void *rtksvrthread(void *arg)
                 fobs[stream_number] = decoderaw(svr, stream_number);
             }
         }
+        
+        cputime = (int) (tickget() - tick);
+        trace(2, "rtkrcv decoding time: %d [ms]\n", cputime);
 
         while ( (fobs[0] > 0) && (svr->obs[0][fobs[0]-1].n <= 0) ) { /* skip empty rover obs */
             
@@ -1179,8 +1182,11 @@ static void *rtksvrthread(void *arg)
             }
         }
         
+        cputime = (int) (tickget() - tick);
+        trace(2, "rtkrcv data handling time: %d [ms]\n", cputime);
+        
         /* produce position estimation */
-        if ( is_fix_and_hold_refinement_option_is_on ) {
+        if ( is_fix_and_hold_refinement_option_on ) {
             
             if ( fobs[0] > 0 ) {
                 
@@ -1203,7 +1209,7 @@ static void *rtksvrthread(void *arg)
                 }
             }
         }
-        else { /* !is_fix_and_hold_refinement_option_is_on */
+        else { /* !is_fix_and_hold_refinement_option_on */
                 
             for (i = 0; i < fobs[0]; i++) {
                 
@@ -1243,7 +1249,7 @@ static void *rtksvrthread(void *arg)
             
             trace(2, "rtkrcv calc cycle: %d [ms]\n", cputime);
             
-            if ( is_fix_and_hold_refinement_option_is_on ) {
+            if ( is_fix_and_hold_refinement_option_on ) {
                 
                 trace(2, "rtk_multi status: solstat = %d, nhyp = %d\n", rtk_multi->rtk_out->sol.stat,
                                                                         rtk_multi->n_hypotheses);
@@ -1251,12 +1257,14 @@ static void *rtksvrthread(void *arg)
         }
         
         /* rtk_multi processing */
-        if ( is_fix_and_hold_refinement_option_is_on ) {
+        if ( is_fix_and_hold_refinement_option_on ) {
             
-            for (i = 0; i < fobs[0]; i++) { /* for each rover observation data */
+            if ( fobs[0] > 0 ) {
                 
+                /* use only last data received to avoid cpu overload 
+                   (fobs is expected to be 0 or 1 at the most moments of time) */
                 rtksvrlock(svr);
-                rtk_input_data = rtksvr_get_input_data(svr, i);
+                rtk_input_data = rtksvr_get_input_data(svr, fobs[0]-1);
                 rtksvrunlock(svr);
                 
                 rtk_multi_process(rtk_multi, &rtk_multi_strategy_fxhr, rtk_input_data);

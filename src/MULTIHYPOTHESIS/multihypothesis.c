@@ -495,6 +495,13 @@ extern void rtk_multi_estimate_main(rtk_multi_t *rtk_multi,
     rtk_last = rtk_history_get_pointer_to_last(hypothesis_main);
     rtk = rtk_init(&rtk_last->opt);
     rtk_copy(rtk_last, rtk);
+    
+    memcpy(rtk->opt.rb, rtk_multi->opt.rb, sizeof(double) * 3);
+    memcpy(rtk->rb, rtk_multi->opt.rb, sizeof(double) * 3);
+    
+    /* turn off expensive option to produce local estimation faster */
+    rtk->opt.residual_mode = 0;
+    
     rtkpos(rtk, rtk_input_data->obsd, rtk_input_data->n_obsd, rtk_input_data->nav);
     
     if ( (rtk->sol.ratio == 0.0) && (rtk->sol.stat == SOLQ_FLOAT) ) {

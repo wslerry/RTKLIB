@@ -212,6 +212,16 @@ static int rtk_history_validate_fxhr(rtk_history_t *rtk_history)
 
     rtk_history->solution_quality = rms_residuals_fix;
     
+    if ( rms_residuals_fix >= RESID_THRESH_FXHR ) {
+        
+        trace(2, "fix is discarded (large res)\n");
+    }
+    if ( (n_alternative_fixes >= MIN_ALTERNATIVE_FIXES_FXHR)
+      && (rms_residuals_fix >= RESID_FINE_TRESH_FXHR) ) {
+        
+        trace(2, "fix is discarded (alternative fix)\n");
+    }
+    
     return (rms_residuals_fix < RESID_THRESH_FXHR) 
         && ((n_alternative_fixes < MIN_ALTERNATIVE_FIXES_FXHR) 
             || (rms_residuals_fix < RESID_FINE_TRESH_FXHR));
@@ -229,6 +239,14 @@ extern void rtk_multi_split_fxhr(rtk_multi_t *rtk_multi, const rtk_input_data_t 
     
     assert( rtk_multi_is_valid_fxhr(rtk_multi) );
     assert( rtk_input_data_is_valid(rtk_input_data) );
+    
+    if ( rtk_multi->n_hypotheses >= N_HYPOTHESES_FXHR ) {
+        
+        hypothesis = rtk_multi->hypotheses[N_HYPOTHESES_FXHR-1];
+        rtk = rtk_history_get_pointer_to_last(hypothesis);
+        
+        rtk->is_alternative_fix_possible = 0; /* reset 'alternative fix' flag */
+    }
     
     split_outage++;
     if ( split_outage < SPLIT_INTERVAL_FXHR ) {
