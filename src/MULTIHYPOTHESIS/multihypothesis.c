@@ -577,7 +577,6 @@ extern void rtk_multi_process(rtk_multi_t *rtk_multi,
     
     rtk_multi_update_base_pos(rtk_multi);
     
-    trace(2, "rtk_multi_process: update_base_pos, %d [ms]\n", (int) (tickget() - tick));
     tick = tickget();
     
     rtk_multi_strategy->split(rtk_multi, rtk_input_data);

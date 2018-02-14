@@ -1140,9 +1140,6 @@ static void *rtksvrthread(void *arg)
                 fobs[stream_number] = decoderaw(svr, stream_number);
             }
         }
-        
-        cputime = (int) (tickget() - tick);
-        trace(2, "rtkrcv decoding time: %d [ms]\n", cputime);
 
         while ( (fobs[0] > 0) && (svr->obs[0][fobs[0]-1].n <= 0) ) { /* skip empty rover obs */
             
@@ -1183,7 +1180,7 @@ static void *rtksvrthread(void *arg)
         }
         
         cputime = (int) (tickget() - tick);
-        trace(2, "rtkrcv data handling time: %d [ms]\n", cputime);
+        trace(2, "rtkrcv get data time: %d [ms]\n", cputime);
         
         /* produce position estimation */
         if ( is_fix_and_hold_refinement_option_on ) {

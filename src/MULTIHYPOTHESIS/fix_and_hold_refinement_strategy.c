@@ -377,7 +377,7 @@ extern void rtk_multi_merge_fxhr(rtk_multi_t *rtk_multi)
         if ( reset_outage >= RESET_INTERVAL_FXHR ) {
             
             if ( (hypothesis->solution_quality >= 0.0)
-            && (get_number_of_alternative_fixes(hypothesis) == 0) ) {
+              && (get_number_of_alternative_fixes(hypothesis) == 0) ) {
                 
                 rtk_history_reset(rtk_multi->hypotheses[0]);
                 trace(2, "reset float filter\n");
