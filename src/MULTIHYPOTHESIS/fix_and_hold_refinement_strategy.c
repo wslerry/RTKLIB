@@ -10,14 +10,15 @@ extern rtk_multi_t *rtk_multi_init_fxhr(prcopt_t opt)
 {
     rtk_multi_t   *rtk_multi = rtk_multi_init(opt);
     rtk_t         *rtk;
+    prcopt_t      opt_float = opt;
     int index_new;
 
     /* init float filter */
-    opt.modear = ARMODE_OFF;
-    opt.gpsmodear = ARMODE_OFF;
-    opt.glomodear = GLO_ARMODE_OFF;
-    opt.bdsmodear = ARMODE_OFF;
-    rtk = rtk_init(&opt);
+    opt_float.modear = ARMODE_OFF;
+    opt_float.gpsmodear = ARMODE_OFF;
+    opt_float.glomodear = GLO_ARMODE_OFF;
+    opt_float.bdsmodear = ARMODE_OFF;
+    rtk = rtk_init(&opt_float);
     index_new = rtk_multi_add(rtk_multi, rtk);
     rtk_multi->hypotheses[index_new]->target_solution_status = SOLQ_FLOAT;
     rtk_multi->index_main = index_new;
@@ -25,6 +26,18 @@ extern rtk_multi_t *rtk_multi_init_fxhr(prcopt_t opt)
     assert( index_new == 0 );
     
     rtk_free(rtk);
+    
+    /* init fix filter */
+    rtk = rtk_init(&opt);
+    index_new = rtk_multi_add(rtk_multi, rtk);
+    rtk_multi->hypotheses[index_new]->target_solution_status = SOLQ_FIX;
+    rtk_multi->index_main = index_new;
+    
+    assert( index_new == 1 );
+    
+    rtk_free(rtk);
+    
+    assert( rtk_multi_is_valid_fxhr(rtk_multi) );
 
     return rtk_multi;
 }
@@ -330,7 +343,7 @@ extern void rtk_multi_qualify_fxhr(rtk_multi_t *rtk_multi)
 
         if ( rtk_history_validate_fxhr(hypothesis) == 0 ) {
             
-            rtk_multi_exclude(rtk_multi, i);
+            rtk_history_reset(rtk_multi->hypotheses[i]);
         }
     }
     
@@ -338,11 +351,14 @@ extern void rtk_multi_qualify_fxhr(rtk_multi_t *rtk_multi)
 
 extern void rtk_multi_merge_fxhr(rtk_multi_t *rtk_multi)
 {
+    static int reset_outage = -1;
     rtk_history_t *hypothesis = NULL;
     rtk_t *rtk = NULL;
 
     assert( rtk_multi_is_valid_fxhr(rtk_multi) );
 
+    reset_outage++;
+    
     if ( rtk_multi->n_hypotheses == 1 ) { /* output float */
 
         hypothesis = rtk_multi->hypotheses[0];
@@ -356,6 +372,20 @@ extern void rtk_multi_merge_fxhr(rtk_multi_t *rtk_multi)
         hypothesis = rtk_multi->hypotheses[1];
         rtk = rtk_history_get_pointer_to_last(hypothesis);
         rtk_multi->index_main = 1;
+        
+        /* reset float filter periodically if there is a validated fix hypothesis and no alternative fixes  */
+        if ( reset_outage >= RESET_INTERVAL_FXHR ) {
+            
+            if ( (hypothesis->solution_quality >= 0.0)
+            && (get_number_of_alternative_fixes(hypothesis) == 0) ) {
+                
+                rtk_history_reset(rtk_multi->hypotheses[0]);
+                trace(2, "reset float filter\n");
+            }
+            
+            reset_outage = 0;
+        }
+        
     }
     
     assert( rtk_history_is_valid(hypothesis) );

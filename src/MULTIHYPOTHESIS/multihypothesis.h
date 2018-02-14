@@ -70,6 +70,7 @@ extern void rtk_history_add(rtk_history_t *rtk_history, const rtk_t *rtk);
 extern void rtk_history_cut(rtk_history_t *rtk_history, int n_cut);
 extern int  rtk_history_is_empty(const rtk_history_t *rtk_history);
 extern void rtk_history_clear(rtk_history_t *rtk_history);
+extern void rtk_history_reset(rtk_history_t *rtk_history);
 extern rtk_t *rtk_history_get_pointer(const rtk_history_t *rtk_history, int index);
 extern rtk_t *rtk_history_get_pointer_to_last(const rtk_history_t *rtk_history);
 

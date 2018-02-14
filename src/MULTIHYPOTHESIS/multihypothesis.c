@@ -215,7 +215,7 @@ extern int rtk_history_is_valid(const rtk_history_t *rtk_history)
 
 extern void rtk_history_free(rtk_history_t *rtk_history)
 {
-    assert(rtk_history_is_valid(rtk_history));
+    assert( rtk_history_is_valid(rtk_history) );
 
     rtk_queue_free(rtk_history->history);
     free(rtk_history);
@@ -248,7 +248,24 @@ extern void rtk_history_clear(rtk_history_t *rtk_history)
     assert( rtk_history_is_valid(rtk_history) );
 
     rtk_history_cut(rtk_history, rtk_history->history->length);
+    
     assert( rtk_history_is_empty(rtk_history) );
+}
+
+extern void rtk_history_reset(rtk_history_t *rtk_history)
+{
+    rtk_t *rtk;
+    rtk_t *rtk_last;
+    
+    assert( rtk_history_is_valid(rtk_history) );
+
+    rtk_last = rtk_history_get_pointer_to_last(rtk_history);
+    rtk = rtk_init(&rtk_last->opt);
+    
+    rtk_history_clear(rtk_history);
+    rtk_history_add(rtk_history, rtk);
+    
+    rtk_free(rtk);
 }
 
 extern rtk_t *rtk_history_get_pointer(const rtk_history_t *rtk_history, int index)
@@ -265,7 +282,6 @@ extern rtk_t *rtk_history_get_pointer(const rtk_history_t *rtk_history, int inde
 
 extern rtk_t *rtk_history_get_pointer_to_last(const rtk_history_t *rtk_history)
 {
-
     return rtk_history_get_pointer(rtk_history, 0);
 }
 
@@ -519,7 +535,7 @@ static void rtk_multi_step(rtk_multi_t *rtk_multi,
 {
     int i;
     rtk_history_t *hypothesis;
-
+    
     for (i = 0; i < MAX_RTK_HYPOTHESES; i++) {
         
         hypothesis = rtk_multi->hypotheses[i];
@@ -535,7 +551,7 @@ static void rtk_multi_update_base_pos(rtk_multi_t * rtk_multi)
     int i;
     rtk_history_t *hypothesis;
     rtk_t *rtk;
-
+    
     for (i = 0; i < MAX_RTK_HYPOTHESES; i++ ) {
         
         hypothesis = rtk_multi->hypotheses[i];

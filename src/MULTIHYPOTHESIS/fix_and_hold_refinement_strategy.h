@@ -14,6 +14,7 @@
 #define RESID_THRESH_FXHR     0.02   /* max RMSE of phase residuals allowed for 'fix hypothesis' 
                                         to been mark as valid [m] */
 #define SPLIT_INTERVAL_FXHR   10     /* time span between split operations (epochs) */
+#define RESET_INTERVAL_FXHR   300    /* min time span between reset float filter operations (epochs) */ 
 #define LOW_SOL_QUAL          100.0  /* low solution quality threshold (rtk_history->solution_quality) */
 
 #define RTK_POS_THRESH_FXHR        0.1    /* min 3D distance between solutions to distinguish */
