@@ -2282,6 +2282,16 @@ extern rtk_t *rtk_init(const prcopt_t *opt)
     return rtk;
 }
 
+extern void rtk_reset(rtk_t *rtk)
+{
+    prcopt_t opt;
+    
+    assert( rtk_is_valid(rtk) );
+    
+    opt = rtk->opt;
+    rtkinit(rtk, &opt);
+}
+
 /*
  * general type of estimator for RTK positioning
  *  args:  rtk      IO      gnss solution structure
