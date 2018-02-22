@@ -6,6 +6,13 @@
 #define MAX_RTK_HYPOTHESES 2         /* max number of hypotheses */
 #define MAX_RTK_QUEUE      150       /* max number of epochs stored */
 
+#define ALTER_FIX_CODE -1.0 
+#define LARGE_RES_CODE -2.0
+#define CODE_SHOW_DURATION 10
+
+extern int alter_fix_out_counter;
+extern int large_res_out_counter;
+
 #define SQR(x) ((x) * (x))
 
 /* ------------------------------------------------------------------------- */

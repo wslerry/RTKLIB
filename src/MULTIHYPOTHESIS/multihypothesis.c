@@ -1,5 +1,8 @@
 #include "multihypothesis.h"
 
+int alter_fix_out_counter = 0;
+int large_res_out_counter = 0;
+
 /* -------------------------------------------------------------------------- */
 /* manipulation functions --------------------------------------------------- */
 
@@ -527,6 +530,17 @@ extern void rtk_multi_estimate_main(rtk_multi_t *rtk_multi,
     
     rtk_copy(rtk, rtk_multi->rtk_out);
     rtk_free(rtk);
+    
+    if ( alter_fix_out_counter > 0 ) {
+        
+        rtk_multi->rtk_out->sol.ratio = ALTER_FIX_CODE;
+        alter_fix_out_counter--;
+    }
+    if ( large_res_out_counter > 0 ) {
+        
+        rtk_multi->rtk_out->sol.ratio = LARGE_RES_CODE;
+        large_res_out_counter--;
+    }
     
 }
 

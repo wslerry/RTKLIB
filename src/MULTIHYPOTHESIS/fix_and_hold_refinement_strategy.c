@@ -192,8 +192,8 @@ static int rtk_history_validate_fxhr(rtk_history_t *rtk_history)
 {
     int n_epochs;
     int n_alternative_fixes;
-    double rms_residuals_fix;
-    double fix_fraction;
+    double rms_residuals_fix, rms_residuals_thresh;
+    double fix_fraction, alternative_fix_fraction;
 
     assert( rtk_history_is_valid(rtk_history) );
     assert( !rtk_history_is_empty(rtk_history) );
@@ -222,22 +222,29 @@ static int rtk_history_validate_fxhr(rtk_history_t *rtk_history)
 
     n_alternative_fixes = get_number_of_alternative_fixes(rtk_history);
     rms_residuals_fix   = get_rms_residuals_fix(rtk_history);
-
+    
     rtk_history->solution_quality = rms_residuals_fix;
+    
+    alternative_fix_fraction = (double) (n_alternative_fixes * SPLIT_INTERVAL_FXHR) / n_epochs;
+    if ( alternative_fix_fraction > 1.0 ) alternative_fix_fraction = 1.0;
+    
+    rms_residuals_thresh = RESID_THRESH_FXHR - (RESID_THRESH_FXHR - RESID_FINE_TRESH_FXHR) * alternative_fix_fraction;
     
     if ( rms_residuals_fix >= RESID_THRESH_FXHR ) {
         
         trace(2, "fix is discarded (large res)\n");
+        large_res_out_counter = CODE_SHOW_DURATION;
     }
     if ( (n_alternative_fixes >= MIN_ALTERNATIVE_FIXES_FXHR)
-      && (rms_residuals_fix >= RESID_FINE_TRESH_FXHR) ) {
+      && (rms_residuals_fix >= rms_residuals_thresh) ) {
         
         trace(2, "fix is discarded (alternative fix)\n");
+        alter_fix_out_counter = CODE_SHOW_DURATION;
     }
     
     return (rms_residuals_fix < RESID_THRESH_FXHR) 
         && ((n_alternative_fixes < MIN_ALTERNATIVE_FIXES_FXHR) 
-            || (rms_residuals_fix < RESID_FINE_TRESH_FXHR));
+            || (rms_residuals_fix < rms_residuals_thresh));
 }
 
 extern void rtk_multi_split_fxhr(rtk_multi_t *rtk_multi, const rtk_input_data_t *rtk_input_data)
@@ -354,6 +361,7 @@ extern void rtk_multi_merge_fxhr(rtk_multi_t *rtk_multi)
     static int reset_outage = -1;
     rtk_history_t *hypothesis = NULL;
     rtk_t *rtk = NULL;
+    int n_alternative_fixes = 0;
 
     assert( rtk_multi_is_valid_fxhr(rtk_multi) );
 
@@ -372,12 +380,13 @@ extern void rtk_multi_merge_fxhr(rtk_multi_t *rtk_multi)
         hypothesis = rtk_multi->hypotheses[1];
         rtk = rtk_history_get_pointer_to_last(hypothesis);
         rtk_multi->index_main = 1;
+        n_alternative_fixes = get_number_of_alternative_fixes(hypothesis);
         
         /* reset float filter periodically if there is a validated fix hypothesis and no alternative fixes  */
         if ( reset_outage >= RESET_INTERVAL_FXHR ) {
             
             if ( (hypothesis->solution_quality >= 0.0)
-              && (get_number_of_alternative_fixes(hypothesis) == 0) ) {
+              && (n_alternative_fixes == 0) ) {
                 
                 rtk_history_reset(rtk_multi->hypotheses[0]);
                 trace(2, "reset float filter\n");
@@ -386,6 +395,7 @@ extern void rtk_multi_merge_fxhr(rtk_multi_t *rtk_multi)
             reset_outage = 0;
         }
         
+        trace(2, "number of alternative fixes: %d\n", n_alternative_fixes);
     }
     
     assert( rtk_history_is_valid(hypothesis) );

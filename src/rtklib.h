@@ -1940,7 +1940,7 @@ extern rtk_t *rtk_init(const prcopt_t *opt);
 extern void rtk_free(rtk_t *rtk);
 extern void rtk_copy(const rtk_t *rtk_source, rtk_t *rtk_destination);
 extern int rtk_is_valid(const rtk_t *rtk);
-extern void rtk_reset(rtk_t *rtk)
+extern void rtk_reset(rtk_t *rtk);
 
 /* precise point positioning -------------------------------------------------*/
 EXPORT void pppos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav);
