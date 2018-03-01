@@ -50,8 +50,8 @@ static const char rcsid[]="$Id: solution.c,v 1.1 2008/07/17 21:48:06 ttaka Exp $
 
 /* constants and macros ------------------------------------------------------*/
 
-#define SQR(x)     ((x)<0.0?-(x)*(x):(x)*(x))
-#define SQRT(x)    ((x)<0.0?0.0:sqrt(x))
+#define SQR(x)   ((x)<0.0?-(x)*(x):(x)*(x))
+#define SQRT(x)         ((x)<0.0?0.0:sqrt(x))
 
 #define MAXFIELD   64           /* max number of fields in a record */
 #define MAXNMEA    256          /* max length of nmea sentence */
@@ -1043,6 +1043,14 @@ extern int readsolstat(char *files[], int nfile, solstatbuf_t *statbuf)
     
     return readsolstatt(files,nfile,time,time,0.0,statbuf);
 }
+static int verify_sat(const ssat_t * ssat, int sat, int solstat, int nfreq) {
+    if (solstat == SOLQ_SINGLE) {
+        return ssat[sat].vs;
+    }
+    else {
+        return ssat[sat].vsat[nfreq];
+    }
+}
 /* output solution as the form of x/y/z-ecef ---------------------------------*/
 static int outecef(unsigned char *buff, const char *s, const sol_t *sol,
                    const solopt_t *opt)
@@ -1396,15 +1404,19 @@ extern int outnmea_gst(unsigned char *buff, const sol_t *sol, const ssat_t *ssat
     double pos[3], Q[9] = {0}, P[9] = {0}, ep[6], sum_rms = 0, range_rms = 0;
     char *p = (char *) buff, *q, sum;
     gtime_t time;
-    int sat, count_rms = 0;
+    int sat, freq, count_rms = 0;
 
-    if (sol->type == 0) {
-        ecef2pos(sol->rr, pos);
-        soltocov(sol, P);
-        covenu(pos, P, Q);
-    }
-    else {
-        soltocov(sol, Q);
+    switch(sol->type) {
+        case 0: {
+            ecef2pos(sol->rr, pos);
+            soltocov(sol, P);
+            covenu(pos, P, Q);
+            break;
+        }
+        case 1: {
+            soltocov(sol, Q);
+            break;
+        }
     }
 
     time = gpst2utc(sol->time);
@@ -1419,17 +1431,16 @@ extern int outnmea_gst(unsigned char *buff, const sol_t *sol, const ssat_t *ssat
         p += sprintf(p, "*%02X%c%c", sum, 0x0D, 0x0A);
         return p - (char *) buff;
     }
-    for (sat = 1; sat <= MAXSAT; sat++) {
-        if (!ssat[sat - 1].vs) {
-            continue;
-        }
-
-        if (ssat[sat - 1].resp[0] != 0) {
-            sum_rms = SQR(ssat[sat - 1].resp[0]);
-            count_rms++;
+    for (sat = 0; sat < MAXSAT; sat++) {
+        for (freq = 0; freq < NFREQ; freq++) {
+            if (verify_sat(ssat, sat, sol->stat, freq))
+            {
+                sum_rms += SQR(ssat[sat].resp[freq]);
+                count_rms++;
+            }
         }
     }
-    range_rms = SQRT(sum_rms) / count_rms;
+    range_rms = SQRT(sum_rms / count_rms);
     p += sprintf(p, "$GNGST,%02.0f%02.0f%05.2f,%5.3f,,,,%5.3f,%5.3f,%5.3f",
                  ep[3], ep[4], ep[5], range_rms, SQRT(Q[0]), SQRT(Q[4]), SQRT(Q[8]));
 
