@@ -4,6 +4,7 @@
 //---------------------------------------------------------------------------
 #include <QMainWindow>
 #include <QThread>
+#include <clocale>
 
 #include "ui_convmain.h"
 

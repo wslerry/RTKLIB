@@ -5,6 +5,7 @@
 #include <QString>
 #include <QDialog>
 #include <QThread>
+#include <clocale>
 
 #include "rtklib.h"
 

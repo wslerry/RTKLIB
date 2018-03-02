@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <QTime>
 #include <QMainWindow>
+#include <clocale>
 
 #include "graph.h"
 #include "console.h"

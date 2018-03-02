@@ -345,7 +345,7 @@ static serial_t *openserial(const char *path, int mode, char *msg)
     char dcb[64]="";
 #else
     const speed_t bs[]={
-        B300,B600,B1200,B2400,B4800,B9600,B19200,B38400,B57600,B115200,B230400,B460800
+        B300,B600,B1200,B2400,B4800,B9600,B19200,B38400,B57600,B115200,B230400
     };
     struct termios ios={0};
     int rw=0;
