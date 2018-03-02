@@ -5,6 +5,7 @@
 #include <QDialog>
 #include <QTimer>
 #include <QSystemTrayIcon>
+#include <clocale>
 
 #include "ui_svrmain.h"
 

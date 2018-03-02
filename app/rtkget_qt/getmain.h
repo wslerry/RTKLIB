@@ -7,7 +7,7 @@
 #include <QTimer>
 #include <QPixmap>
 #include <QSystemTrayIcon>
-
+#include <clocale>
 #include "rtklib.h"
 #include "ui_getmain.h"
 

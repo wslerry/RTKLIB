@@ -7,7 +7,7 @@
 #include <QSystemTrayIcon>
 #include <QTimer>
 #include <QMenu>
-
+#include <clocale>
 
 #include "rtklib.h"
 #include "ui_navimain.h"
