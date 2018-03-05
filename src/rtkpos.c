@@ -2648,7 +2648,7 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
         /* time-synchronized position of base station */
         for (i=0;i<3;i++) rtk->rb[i]+=rtk->rb[i+3]*rtk->sol.age;
     
-    trace(3,"base pos: "); tracemat(3,rtk->rb,1,3,13,4);
+        trace(3,"base pos: "); tracemat(3,rtk->rb,1,3,13,4);
     }
     else {
         /* find last epoch in base obs */

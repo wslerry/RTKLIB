@@ -1191,7 +1191,9 @@ static void *rtksvrthread(void *arg)
                 rtk_multi->opt = svr->rtk.opt;
                 memcpy(rtk_multi->opt.rb, svr->rtk.rb, sizeof(double) * 3);
                 
-                rtksvr_compute_solution_multi(svr, fobs[0]-1, rtk_multi);
+                rtk_input_data = rtksvr_get_input_data(svr, fobs[0]-1);
+                rtk_multi_process(rtk_multi, &rtk_multi_strategy_fxhr, rtk_input_data);
+                rtksvr_free_input_data(rtk_input_data);
                 rtk_copy(rtk_multi->rtk_out, &svr->rtk);
                 svr->rtk.opt = rtk_multi->opt;
                 
@@ -1250,22 +1252,6 @@ static void *rtksvrthread(void *arg)
                 
                 trace(2, "rtk_multi status: solstat = %d, nhyp = %d\n", rtk_multi->rtk_out->sol.stat,
                                                                         rtk_multi->n_hypotheses);
-            }
-        }
-        
-        /* rtk_multi processing */
-        if ( is_fix_and_hold_refinement_option_on ) {
-            
-            if ( fobs[0] > 0 ) {
-                
-                /* use only last data received to avoid cpu overload 
-                   (fobs is expected to be 0 or 1 at the most moments of time) */
-                rtksvrlock(svr);
-                rtk_input_data = rtksvr_get_input_data(svr, fobs[0]-1);
-                rtksvrunlock(svr);
-                
-                rtk_multi_process(rtk_multi, &rtk_multi_strategy_fxhr, rtk_input_data);
-                rtksvr_free_input_data(rtk_input_data);
             }
         }
         
