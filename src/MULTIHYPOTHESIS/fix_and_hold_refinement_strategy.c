@@ -181,9 +181,9 @@ static int rtk_multi_validate_hypothesis_fxhr(rtk_multi_t *rtk_multi, int index)
 {
     int n_epochs;
     int n_alternative_fixes;
+    rtk_hypothesis_t *rtk_hypothesis;
     double rms_residuals_fix;
     double fix_fraction;
-    rtk_hypothesis_t *rtk_hypothesis;
     
     assert( rtk_multi_is_valid_fxhr(rtk_multi) );
     
@@ -218,12 +218,16 @@ static int rtk_multi_validate_hypothesis_fxhr(rtk_multi_t *rtk_multi, int index)
     if ( rms_residuals_fix >= RESID_THRESH_FXHR ) {
         
         trace(2, "fix is discarded (large res)\n");
+        large_res_out_counter = CODE_SHOW_DURATION;
     }
     if ( (n_alternative_fixes >= MIN_ALTERNATIVE_FIXES_FXHR)
       && (rms_residuals_fix >= RESID_FINE_TRESH_FXHR) ) {
         
         trace(2, "fix is discarded (alternative fix)\n");
+        alter_fix_out_counter = CODE_SHOW_DURATION;
     }
+    
+    trace(2, "number of alternative fixes: %d\n", n_alternative_fixes);
     
     return (rms_residuals_fix < RESID_THRESH_FXHR) 
         && ((n_alternative_fixes < MIN_ALTERNATIVE_FIXES_FXHR) 

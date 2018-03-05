@@ -8,6 +8,13 @@
 
 #define SQR(x) ((x) * (x))
 
+#define ALTER_FIX_CODE -1.0 
+#define LARGE_RES_CODE -2.0
+#define CODE_SHOW_DURATION 10
+
+extern int alter_fix_out_counter;
+extern int large_res_out_counter;
+
 /* ------------------------------------------------------------------------- */
 /* basic types ------------------------------------------------------------- */
 

@@ -1,5 +1,8 @@
 #include "multihypothesis.h"
 
+int alter_fix_out_counter = 0;
+int large_res_out_counter = 0;
+
 /* -------------------------------------------------------------------------- */
 /* manipulation functions --------------------------------------------------- */
 
@@ -689,4 +692,15 @@ extern void rtk_multi_process(rtk_multi_t *rtk_multi,
     
     trace(2, "rtk_multi_process: merge, %d [ms]\n", (int) (tickget() - tick));
     tick = tickget();
+    
+    if ( alter_fix_out_counter > 0 ) {
+        
+        rtk_multi->rtk_out->sol.ratio = ALTER_FIX_CODE;
+        alter_fix_out_counter--;
+    }
+    if ( large_res_out_counter > 0 ) {
+        
+        rtk_multi->rtk_out->sol.ratio = LARGE_RES_CODE;
+        large_res_out_counter--;
+    }
 }
