@@ -956,6 +956,7 @@ int MainForm::GetOption(prcopt_t &prcopt, solopt_t &solopt,
         for (int i=0;i<3;i++) prcopt.ru[i]=0.0;
     }
     else if (RovPosType<=2) {
+        prcopt.rovpos = POSOPT_POS;
         for (int i=0;i<3;i++) prcopt.ru[i]=RovPos[i];
     }
     else prcopt.rovpos=RovPosType-2; /* 1:single,2:posfile,3:rinex */
@@ -964,6 +965,7 @@ int MainForm::GetOption(prcopt_t &prcopt, solopt_t &solopt,
         for (int i=0;i<3;i++) prcopt.rb[i]=0.0;
     }
     else if (RefPosType<=2) {
+        prcopt.refpos = POSOPT_POS;
         for (int i=0;i<3;i++) prcopt.rb[i]=RefPos[i];
     }
     else prcopt.refpos=RefPosType-2;

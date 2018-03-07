@@ -788,6 +788,32 @@ static void freeobsnav(obs_t *obs, nav_t *nav)
     free(nav->geph); nav->geph=NULL; nav->ng=nav->ngmax=0;
     free(nav->seph); nav->seph=NULL; nav->ns=nav->nsmax=0;
 }
+#define TINT_MIN_VALUE   1e-3	/* min value for time interval */
+/* gtime to seconds ----------------------------------------------------------*/
+static double gtime2sec(gtime_t time)
+{
+    return (double)time.time + time.sec;
+}
+/* test time interval --------------------------------------------------------*/
+static int is_tint(gtime_t time, double tint, double *time_last_msg_sec) {
+
+
+    double time_sec = gtime2sec(time);
+
+    if (tint <= TINT_MIN_VALUE) return 1;
+
+    if (time_sec >= (*time_last_msg_sec + 0.5 * tint)) {
+        if (time_sec - *time_last_msg_sec > 1.5 * tint)
+            *time_last_msg_sec = tint * ((long)(time_sec / tint + 0.5));
+        else
+            *time_last_msg_sec += tint;
+
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
 /* average of single position ------------------------------------------------*/
 static int avepos(double *ra, int rcv, const obs_t *obs, const nav_t *nav,
                   const prcopt_t *opt)
@@ -797,7 +823,7 @@ static int avepos(double *ra, int rcv, const obs_t *obs, const nav_t *nav,
     sol_t sol={{0}};
     int i,j,n=0,m,iobs;
     char msg[128];
-    
+    double time_last_msg_sec = 0;
     trace(3,"avepos: rcv=%d obs.n=%d\n",rcv,obs->n);
     
     for (i=0;i<3;i++) ra[i]=0.0;
@@ -809,11 +835,14 @@ static int avepos(double *ra, int rcv, const obs_t *obs, const nav_t *nav,
             if ((satsys(data[j].sat,NULL)&opt->navsys)&&
                 opt->exsats[data[j].sat-1]!=1) j++;
         }
-        if (j<=0||!screent(data[0].time,ts,ts,1.0)) continue; /* only 1 hz */
-        
+
+        /*if (j<=0||!screent(data[0].time,ts,ts,1.0)) continue; *//* only 1 hz */
+        if (j <= 0 || !is_tint(data[0].time, 1.0, &time_last_msg_sec)) continue; /* only 1 hz */
+
         /* todo: code smoothing */
-        if (!pntpos(data,j,nav,NULL,opt,&sol,NULL,NULL,msg)) continue;
-        
+        if (!pntpos(data,j,nav,NULL,opt,&sol,NULL,NULL,msg)) {
+            continue;
+        }
         for (i=0;i<3;i++) ra[i]+=sol.rr[i];
         n++;
     }
