@@ -36,3 +36,21 @@ Terminal=false" > $appimage_dir/"${app_qt}.desktop"
 
 for app in rtkpost rtkconv rtkplot rtknavi; do single_image "$app" done &
 done
+
+
+while [ ! -f $RELEASE_DIR/*/RTKPOST*.AppImage -o  \
+        ! -f $RELEASE_DIR/*/RTKNAVI*.AppImage -o \
+        ! -f $RELEASE_DIR/*/RTKPLOT*.AppImage -o  \
+        ! -f $RELEASE_DIR/*/RTKCONV*.AppImage ]
+do
+    sleep 2
+done
+
+zipfile="rtklib-qt-appimage_x86_64.zip"
+rm $zipfile
+zip -j $zipfile $RELEASE_DIR/*/RTKPOST*.AppImage \
+                                     $RELEASE_DIR/*/RTKNAVI*.AppImage \
+                                     $RELEASE_DIR/*/RTKPLOT*.AppImage \
+                                     $RELEASE_DIR/*/RTKCONV*.AppImage \
+                                     $RELEASE_DIR/*/RTKPOST*.AppImage
+md5sum $zipfile > $zipfile".md5"

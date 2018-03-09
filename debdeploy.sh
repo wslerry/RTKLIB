@@ -2,7 +2,7 @@
 RELEASE_DIR="rtklib-linux-x86_64-2.4.3"
 RELEASE_TARGET="rtklib-qt-linux-x64"
 
-rm $RELEASE_TARGET
+rm $RELEASE_TARGET"_1.0_amd64.deb"
 qmake RTKLib.pro -spec linux-g++
 make -f Makefile -j4
 cp -f -t $RELEASE_DIR   app/rtkpost_qt/rtkpost_qt app/rtkpost_qt/rtkpost_Icon.ico \
@@ -25,3 +25,4 @@ fpm -s dir -t deb -n $RELEASE_TARGET --depends qt5-default --depends libqt5seria
     $RELEASE_DIR/rtkplot_qt.desktop=/usr/share/applications/ \
     $RELEASE_DIR/rtkplot_Icon.ico=/usr/share/pixmaps/
 
+md5sum $RELEASE_TARGET"_1.0_amd64.deb" >  $RELEASE_TARGET"_1.0_amd64.deb.md5"
