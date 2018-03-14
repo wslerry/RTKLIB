@@ -50,7 +50,8 @@ static const char rcsid[]="$Id: solution.c,v 1.1 2008/07/17 21:48:06 ttaka Exp $
 
 /* constants and macros ------------------------------------------------------*/
 
-#define SQR(x)   ((x)<0.0?-(x)*(x):(x)*(x))
+#define SIGNED_SQR(x)   ((x)<0.0?-(x)*(x):(x)*(x))
+#define SQR(x)          ((x)*(x))
 #define SQRT(x)         ((x)<0.0?0.0:sqrt(x))
 
 #define MAXFIELD   64           /* max number of fields in a record */
@@ -375,9 +376,9 @@ static int decode_solxyz(char *buff, const solopt_t *opt, sol_t *sol)
         P[4]=val[i]*val[i]; i++; /* sdy */
         P[8]=val[i]*val[i]; i++; /* sdz */
         if (i+3<n) {
-            P[1]=P[3]=SQR(val[i]); i++; /* sdxy */
-            P[5]=P[7]=SQR(val[i]); i++; /* sdyz */
-            P[2]=P[6]=SQR(val[i]); i++; /* sdzx */
+            P[1]=P[3]=SIGNED_SQR(val[i]); i++; /* sdxy */
+            P[5]=P[7]=SIGNED_SQR(val[i]); i++; /* sdyz */
+            P[2]=P[6]=SIGNED_SQR(val[i]); i++; /* sdzx */
         }
         covtosol(P,sol);
     }
@@ -421,9 +422,9 @@ static int decode_solllh(char *buff, const solopt_t *opt, sol_t *sol)
         Q[0]=val[i]*val[i]; i++; /* sde */
         Q[8]=val[i]*val[i]; i++; /* sdu */
         if (i+3<n) {
-            Q[1]=Q[3]=SQR(val[i]); i++; /* sdne */
-            Q[2]=Q[6]=SQR(val[i]); i++; /* sdeu */
-            Q[5]=Q[7]=SQR(val[i]); i++; /* sdun */
+            Q[1]=Q[3]=SIGNED_SQR(val[i]); i++; /* sdne */
+            Q[2]=Q[6]=SIGNED_SQR(val[i]); i++; /* sdeu */
+            Q[5]=Q[7]=SIGNED_SQR(val[i]); i++; /* sdun */
         }
         covecef(pos,Q,P);
         covtosol(P,sol);
@@ -457,9 +458,9 @@ static int decode_solenu(char *buff, const solopt_t *opt, sol_t *sol)
         Q[4]=val[i]*val[i]; i++; /* sdn */
         Q[8]=val[i]*val[i]; i++; /* sdu */
         if (i+3<n) {
-            Q[1]=Q[3]=SQR(val[i]); i++; /* sden */
-            Q[5]=Q[7]=SQR(val[i]); i++; /* sdnu */
-            Q[2]=Q[6]=SQR(val[i]); i++; /* sdue */
+            Q[1]=Q[3]=SIGNED_SQR(val[i]); i++; /* sden */
+            Q[5]=Q[7]=SIGNED_SQR(val[i]); i++; /* sdnu */
+            Q[2]=Q[6]=SIGNED_SQR(val[i]); i++; /* sdue */
         }
         covtosol(Q,sol);
     }
@@ -489,7 +490,7 @@ static int decode_solsss(char *buff, sol_t *sol)
     sol->time=gpst2time(week,tow);
     for (i=0;i<6;i++) {
         sol->rr[i]=i<3?pos[i]:0.0;
-        sol->qr[i]=i<3?(float)SQR(std[i]):0.0f;
+        sol->qr[i]=i<3?(float)SIGNED_SQR(std[i]):0.0f;
         sol->dtr[i]=0.0;
     }
     sol->ns=0;
