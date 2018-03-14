@@ -375,6 +375,9 @@ extern "C" {
 #define PMODE_PPP_STATIC 8              /* positioning mode: PPP-static */
 #define PMODE_PPP_FIXED 9               /* positioning mode: PPP-fixed */
 
+#define SOLT_XYZ    0                   /* solution type: x/y/z-ecef */
+#define SOLT_ENU    1                   /* solution type: e/n/u-baseline */
+
 #define SOLF_LLH    0                   /* solution format: lat/lon/height */
 #define SOLF_XYZ    1                   /* solution format: x/y/z-ecef */
 #define SOLF_ENU    2                   /* solution format: e/n/u-baseline */

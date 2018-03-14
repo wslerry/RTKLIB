@@ -1407,13 +1407,13 @@ extern int outnmea_gst(unsigned char *buff, const sol_t *sol, const ssat_t *ssat
     int sat, freq, count_rms = 0;
 
     switch(sol->type) {
-        case 0: {
+        case SOLT_XYZ: {
             ecef2pos(sol->rr, pos);
             soltocov(sol, P);
             covenu(pos, P, Q);
             break;
         }
-        case 1: {
+        case SOLT_ENU: {
             soltocov(sol, Q);
             break;
         }
