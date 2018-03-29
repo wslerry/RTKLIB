@@ -29,7 +29,7 @@ CFLAGS_CMN = -std=c99 -pedantic -Wall -Werror -fpic -fno-strict-overflow -Wno-er
 					-Wno-error=unused-result $(INCLUDEDIR) $(OPTIONS)
 LDLIBS	   = lib/iers/gcc/iers.a -lm -lrt -lpthread
 SONAME 	   = 2.4.3
-LDFLAGS    = -shared -Wl,-soname,librtk.so.$(SONAME)
+LDFLAGS    = -shared 
 TARGET_LIB = librtk.so
 
 # target-specific options
