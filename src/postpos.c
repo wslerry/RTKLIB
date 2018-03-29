@@ -819,7 +819,6 @@ static int avepos(double *ra, int rcv, const obs_t *obs, const nav_t *nav,
                   const prcopt_t *opt)
 {
     obsd_t data[MAXOBS];
-    gtime_t ts={0};
     sol_t sol={{0}};
     int i,j,n=0,m,iobs;
     char msg[128];

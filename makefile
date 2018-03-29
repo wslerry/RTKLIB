@@ -40,7 +40,8 @@ DBG_OPTS    = -O0 -g
 ##### release / prerelease / debug targets
 
 .DEFAULT_GOAL = all
-.PHONY: all release prerelease debug mkdir install clean IERS deps
+.PHONY: all release prerelease debug mkdir install clean IERS deps \
+		qt_apps qt_appimages qmake qt_debs make_qt clean_qt
 
 all: release
 
@@ -127,7 +128,9 @@ str2str: $(addprefix $(BUILD_DIR)/app/, $(SRC_NAMES_STR2STR:%.c=%.o)) | $(LIB)
 $(BUILD_DIR)/app/%.o: %.c $(DEPDIR)/%.d
 	$(CC) $(DEPFLAGS) -c $(CFLAGS) $< -o $@
 	$(POSTCOMPILE)
+
 ####################################################################
+
 mkdir:
 	mkdir -p $(addsuffix /src, $(BUILD_DIR)) \
 			  $(addsuffix /app, $(BUILD_DIR))
@@ -141,3 +144,24 @@ clean:
 	@$(MAKE) -C $(IERS_DIR)/gcc clean
 
 include $(wildcard $(patsubst %,$(DEPDIR)/%.d,$(basename $(SRC_NAMES))))
+
+####################################################################
+LINUX_DEPLOY_QT = linuxdeployqt-continuous-x86_64.AppImage
+qt_apps: qmake make_qt
+
+qmake:
+	qmake RTKLib.pro -spec linux-g++ -o QtMakefile
+
+make_qt: qmake
+	make -f QtMakefile -j `nproc`
+
+clean_qt:
+	make -f QtMakefile clean -j `nproc`
+	rm QtMakefile
+	rm -rf build/Qt
+
+qt_appimages: qt_apps
+	./util/build_scripts/AppImageDeploy.sh $(LINUX_DEPLOY_QT)
+
+qt_debs: qt_apps
+	./util/build_scripts/debdeploy.sh

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=RTKPOST_Qt
+Exec=/usr/bin/rtkpost_qt
+Icon=/usr/share/pixmaps/rtkpost_Icon.ico
+Type=Application
+Terminal=false
