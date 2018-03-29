@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=RTKPLOT_Qt
+Exec=/usr/bin/rtkplot_qt
+Icon=/usr/share/pixmaps/rtkplot_Icon.ico
+Type=Application
+Terminal=false

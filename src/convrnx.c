@@ -32,7 +32,6 @@
 *-----------------------------------------------------------------------------*/
 #include "rtklib.h"
 
-static const char rcsid[]="$Id:$";
 
 #define TSTARTMARGIN    60.0    /* time margin for file name replacement */
 #define STR_DELAY       25.0    /* ms */

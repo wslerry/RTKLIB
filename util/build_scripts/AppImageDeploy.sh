@@ -1,13 +1,9 @@
 #!/bin/bash
-RELEASE_DIR="rtklib-appimage-x86_64-2.4.3"
+RELEASE_DIR="build/Qt/rtklib-appimage-x86_64-2.4.3"
 
-mkdir $RELEASE_DIR
+mkdir -p $RELEASE_DIR
 rm -rf $RELEASE_DIR/*
-
-qmake RTKLib.pro -spec linux-g++
-make -f Makefile -j4
-
-
+linuxdeployqt=$(realpath $1)
 single_image() {
     app=$1
     app_qt="${app}_qt"
@@ -30,7 +26,7 @@ Icon=${icon}
 Type=Application
 Terminal=false" > $appimage_dir/"${app_qt}.desktop"
     cd $appimage_dir/
-    ../../linuxdeployqt-continuous-x86_64.AppImage "${app_qt}.desktop" -appimage
+    $linuxdeployqt "${app_qt}.desktop" -appimage
     cd ../..
 }
 
@@ -46,7 +42,7 @@ do
     sleep 2
 done
 
-zipfile="rtklib-qt-appimage_x86_64.zip"
+zipfile="build/Qt/rtklib-qt-appimage_x86_64.zip"
 rm $zipfile
 zip -j $zipfile $RELEASE_DIR/*/RTKPOST*.AppImage \
                                      $RELEASE_DIR/*/RTKNAVI*.AppImage \

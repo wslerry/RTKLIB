@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=RTKNAVI_Qt
+Exec=/usr/bin/rtknavi_qt
+Icon=/usr/share/pixmaps/rtknavi_Icon.ico
+Type=Application
+Terminal=false

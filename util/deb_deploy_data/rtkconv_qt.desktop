@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=RTKCONV_Qt
+Exec=/usr/bin/rtkconv_qt
+Icon=/usr/share/pixmaps/rtkconv_Icon.ico
+Type=Application
+Terminal=false
