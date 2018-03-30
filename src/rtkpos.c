@@ -355,6 +355,7 @@ static void outsolstat(rtk_t *rtk,const nav_t *nav)
         if (!ssat->vs) continue;
         satno2id(i+1,id);
         for (j=0;j<nfreq;j++) {
+            printf("%d %d\n", k, k+k*rtk->nx);
             fprintf(fp_stat,"$SAT,%d,%.3f,%s,%d,%.1f,%.1f,%.4f,%.4f,%d,%.0f,%d,%d,%d,%d,%d,%d,%.2f,%.6f,%.5f,%.5f\n",
                     week,tow,id,j+1,ssat->azel[0]*R2D,ssat->azel[1]*R2D,
                     ssat->resp[j],ssat->resc[j],ssat->vsat[j],ssat->snr[j]*0.25,
@@ -2434,8 +2435,9 @@ extern void rtkinit(rtk_t *rtk, const prcopt_t *opt)
     rtk->nx=opt->mode<=PMODE_FIXED?NX(opt):pppnx(opt);
     rtk->na=opt->mode<=PMODE_FIXED?NR(opt):pppnx(opt);
     rtk->tt=0.0;
-    rtk->x=zeros(rtk->nx,1);
-    rtk->P=zeros(rtk->nx,rtk->nx);
+    printf("%d \n", rtk->nx);
+    rtk->x=zeros(rtk->nx+1,1);
+    rtk->P=zeros(rtk->nx+1,rtk->nx+1);
     rtk->xa=zeros(rtk->na,1);
     rtk->Pa=zeros(rtk->na,rtk->na);
     rtk->nfix=rtk->neb=0;

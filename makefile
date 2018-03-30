@@ -27,6 +27,7 @@ INCLUDEDIR := -I$(SRC_DIR_1)
 OPTIONS	   = -DTRACE -DENAGLO -DENAQZS -DENAGAL -DENACMP -DENAIRN -DNFREQ=3 -DSVR_REUSEADDR
 CFLAGS_CMN = -std=c99 -pedantic -Wall -Werror -fpic -fno-strict-overflow -Wno-error=unused-but-set-variable \
 					-Wno-error=unused-function -Wno-error=unused-result $(INCLUDEDIR) $(OPTIONS)
+SAN_FLAGS  = 
 LDLIBS	   = lib/iers/gcc/iers.a -lm -lrt -lpthread
 LDFLAGS    = -shared
 TARGET_LIB = librtk.so
@@ -70,8 +71,8 @@ endif
 
 deps:
 	 mkdir -p $(DEPDIR)
-deps: DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
-deps: POSTCOMPILE = @mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
+POSTCOMPILE = @mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
 
 LIB = $(addprefix $(BUILD_DIR)/,$(TARGET_LIB))
 OBJS = $(addprefix $(BUILD_DIR)/src/,$(OBJ_NAMES))
@@ -90,7 +91,8 @@ prerelease: $(LIB) | $(APPS)
 
 debug: deps
 debug: IERS
-debug: CFLAGS  = $(CFLAGS_CMN) $(DBG_OPTS)
+debug: CFLAGS  = $(CFLAGS_CMN) $(DBG_OPTS) $(SAN_FLAGS)
+debug: SAN_FLAGS = -fno-omit-frame-pointer -fsanitize=address
 debug: mkdir
 debug: |$(LIB) $(APPS)
 
@@ -99,7 +101,7 @@ IERS:
 	@$(MAKE) -C $(IERS_DIR)/gcc
 # release lib
 $(LIB):  $(OBJS)
-	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+	$(CC) $(LDFLAGS) $(SAN_FLAGS) $^ -o $@ $(LDLIBS)
 
 $(BUILD_DIR)/src/%.o: %.c  $(DEPDIR)/%.d
 	$(CC) $(DEPFLAGS) -c $(CFLAGS) -fpic $< -o $@
@@ -111,19 +113,21 @@ $(DEPDIR)/%.d: ;
 
 # apps
 rtkrcv: $(addprefix $(BUILD_DIR)/app/, $(SRC_NAMES_RTKRCV:%.c=%.o)) | $(LIB)
-	$(CC) $^ -o $(BUILD_DIR)/$@ $(LDLIBS)  -L$(BUILD_DIR) -lrtk
+	$(CC) $^ -o $(BUILD_DIR)/$@ $(LDLIBS) $(SAN_FLAGS)  -L$(BUILD_DIR) -lrtk \
+	-Wl,-rpath=$(abspath $(BUILD_DIR))
 
 rnx2rtkp: $(addprefix $(BUILD_DIR)/app/, $(SRC_NAMES_RNX2RTKP:%.c=%.o)) | $(LIB)
-	$(CC) $^ -o $(BUILD_DIR)/$@ $(LDLIBS) -L$(abspath $(BUILD_DIR)) -lrtk
-
+	$(CC) $^ -o $(BUILD_DIR)/$@ $(LDLIBS) $(SAN_FLAGS) -L$(BUILD_DIR) -lrtk \
+	-Wl,-rpath=$(abspath $(BUILD_DIR))
 pos2kml: $(addprefix $(BUILD_DIR)/app/, $(SRC_NAMES_POS2KML:%.c=%.o))  | $(LIB)
-	$(CC) $^ -o $(BUILD_DIR)/$@ $(LDLIBS) -L$(BUILD_DIR) -lrtk
-
+	$(CC) $^ -o $(BUILD_DIR)/$@ $(LDLIBS) $(SAN_FLAGS) -L$(BUILD_DIR) -lrtk \
+	-Wl,-rpath=$(abspath $(BUILD_DIR))
 convbin: $(addprefix $(BUILD_DIR)/app/, $(SRC_NAMES_CONVBIN:%.c=%.o)) | $(LIB)
-	$(CC) $^ -o $(BUILD_DIR)/$@ $(LDLIBS) -L$(BUILD_DIR) -lrtk
-
+	$(CC) $^ -o $(BUILD_DIR)/$@ $(LDLIBS) $(SAN_FLAGS) -L$(BUILD_DIR) -lrtk \
+	-Wl,-rpath=$(abspath $(BUILD_DIR))
 str2str: $(addprefix $(BUILD_DIR)/app/, $(SRC_NAMES_STR2STR:%.c=%.o)) | $(LIB)
-	$(CC) $^ -o $(BUILD_DIR)/$@ $(LDLIBS) -L$(BUILD_DIR) -lrtk
+	$(CC) $^ -o $(BUILD_DIR)/$@ $(LDLIBS) $(SAN_FLAGS) -L$(BUILD_DIR) -lrtk \
+	-Wl,-rpath=$(abspath $(BUILD_DIR))
 
 $(BUILD_DIR)/app/%.o: %.c $(DEPDIR)/%.d
 	$(CC) $(DEPFLAGS) -c $(CFLAGS) $< -o $@
