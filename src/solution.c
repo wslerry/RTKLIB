@@ -278,7 +278,7 @@ static int test_solstat(const char *buff)
 /* decode nmea ---------------------------------------------------------------*/
 static int decode_nmea(char *buff, sol_t *sol)
 {
-    char *p,*q,*val[MAXFIELD]={""};
+    char *p,*q,*val[MAXFIELD]={NULL};
     int n=0;
     
     trace(4,"decode_nmea: buff=%s\n",buff);

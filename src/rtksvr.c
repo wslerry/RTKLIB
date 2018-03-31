@@ -40,7 +40,6 @@
 *-----------------------------------------------------------------------------*/
 #include "rtklib.h"
 
-static const char rcsid[]="$Id:$";
 
 #define MIN_INT_RESET               30000   /* mininum interval of reset command (ms) */
 #define NMEAREQ_SEND_NONE           0       /* don't send nmea request */
