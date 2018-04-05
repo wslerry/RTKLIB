@@ -4085,7 +4085,7 @@ extern int rtk_uncompress(const char *file, char *uncfile)
     return stat;
 }
 
-#ifndef QT
+#ifdef SHARED
 /* dummy application functions for shared library ----------------------------*/
 extern int showmsg(char *format,...) {return 0;}
 extern void settspan(gtime_t ts, gtime_t te) {}

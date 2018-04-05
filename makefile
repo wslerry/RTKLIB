@@ -102,7 +102,7 @@ $(LIB):  $(OBJS)
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 $(BUILD_DIR)/src/%.o: %.c  $(DEPDIR)/%.d
-	$(CC) $(DEPFLAGS) -c $(CFLAGS) -fpic $< -o $@
+	$(CC) $(DEPFLAGS) -c $(CFLAGS) -fpic -DSHARED $< -o $@
 	$(POSTCOMPILE)
 
 $(DEPDIR)/%.d: ;
