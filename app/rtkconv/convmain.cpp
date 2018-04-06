@@ -980,7 +980,7 @@ void __fastcall TMainWindow::LoadOpt(void)
 	TIniFile *ini=new TIniFile(IniFile);
 	AnsiString mask="1111111111111111111111111111111111111111111111111111111";
 	
-	RnxVer				=ini->ReadInteger("opt","rnxver",	   0);
+	RnxVer				=ini->ReadInteger("opt","rnxver",	   6);
 	RnxFile				=ini->ReadInteger("opt","rnxfile",	   0);
 	RnxCode				=ini->ReadString ("opt","rnxcode","0000");
 	RunBy				=ini->ReadString ("opt","runby",	  "");
@@ -1004,9 +1004,9 @@ void __fastcall TMainWindow::LoadOpt(void)
 	Comment[0]			=ini->ReadString ("opt","comment0",   "");
 	Comment[1]			=ini->ReadString ("opt","comment1",   "");
 	RcvOption			=ini->ReadString ("opt","rcvoption",  "");
-	NavSys				=ini->ReadInteger("opt","navsys",	 0x3);
+	NavSys				=ini->ReadInteger("opt","navsys",	 SYS_ALL);
 	ObsType				=ini->ReadInteger("opt","obstype",	 0xF);
-	FreqType			=ini->ReadInteger("opt","freqtype",  0x3);
+	FreqType			=ini->ReadInteger("opt","freqtype",  0x1);
 	ExSats				=ini->ReadString ("opt","exsats",	  "");
 	TraceLevel			=ini->ReadInteger("opt","tracelevel",  0);
 	RnxTime.time		=ini->ReadInteger("opt","rnxtime",	   0);
