@@ -29,7 +29,7 @@ USEFORM("..\appcmn\viewer.cpp", TextViewer);
 USEFORM("..\appcmn\timedlg.cpp", TimeDialog);
 USEFORM("startdlg.cpp", StartDialog);
 //---------------------------------------------------------------------------
-WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
 	try
 	{
