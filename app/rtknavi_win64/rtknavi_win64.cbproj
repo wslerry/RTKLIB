@@ -7,7 +7,7 @@
         <Config Condition="'$(Config)'==''">Release</Config>
         <FrameworkType>VCL</FrameworkType>
         <ProjectVersion>18.2</ProjectVersion>
-        <Platform Condition="'$(Platform)'==''">Win32</Platform>
+        <Platform Condition="'$(Platform)'==''">Win64</Platform>
         <TargetedPlatforms>3</TargetedPlatforms>
         <AppType>Application</AppType>
     </PropertyGroup>
@@ -465,10 +465,10 @@
         <FormResources Include="..\appcmn\ftpoptdlg.dfm"/>
         <FormResources Include="..\appcmn\maskoptdlg.dfm"/>
         <FormResources Include="..\appcmn\keydlg.dfm"/>
-        <FormResources Include="..\rtknavi\naviopt.dfm"/>
-        <FormResources Include="..\rtknavi\navimain.dfm"/>
         <FormResources Include="..\rtknavi\mondlg.dfm"/>
         <FormResources Include="..\rtknavi\outstrdlg.dfm"/>
+        <FormResources Include="..\rtknavi\naviopt.dfm"/>
+        <FormResources Include="..\rtknavi\navimain.dfm"/>
         <FormResources Include="..\rtknavi\rcvoptdlg.dfm"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
