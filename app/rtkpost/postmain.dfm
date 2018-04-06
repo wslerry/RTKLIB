@@ -3,11 +3,12 @@ object MainForm: TMainForm
   Top = 0
   BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'RTKPOST'
-  ClientHeight = 347
+  ClientHeight = 361
   ClientWidth = 472
   Color = clWindow
-  Constraints.MaxHeight = 385
-  Constraints.MinHeight = 385
+  Constraints.MaxHeight = 400
+  Constraints.MaxWidth = 600
+  Constraints.MinHeight = 390
   Constraints.MinWidth = 488
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -852,11 +853,12 @@ object MainForm: TMainForm
     Left = 0
     Top = 318
     Width = 472
-    Height = 29
+    Height = 43
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 1
     OnResize = Panel2Resize
+    ExplicitHeight = 28
     object BtnView: TBitBtn
       Left = 79
       Top = 0

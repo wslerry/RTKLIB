@@ -7,8 +7,8 @@
         <Config Condition="'$(Config)'==''">Release</Config>
         <FrameworkType>VCL</FrameworkType>
         <ProjectVersion>18.2</ProjectVersion>
-        <Platform Condition="'$(Platform)'==''">Win32</Platform>
-        <TargetedPlatforms>1</TargetedPlatforms>
+        <Platform Condition="'$(Platform)'==''">Win64</Platform>
+        <TargetedPlatforms>3</TargetedPlatforms>
         <AppType>Application</AppType>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
@@ -111,6 +111,12 @@
         <UWP_CppLogo150>$(BDS)\bin\Artwork\Windows\UWP\cppreg_UwpDefault_150.png</UWP_CppLogo150>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
+        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+        <BT_BuildType>Debug</BT_BuildType>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+        <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
+        <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <TASM_Defines>_RTLDLL;WIN32;TRACE;ENAGLO;ENAQZS;ENAGAL;NFREQ=3;$(TASM_Defines)</TASM_Defines>
         <BRCC_Defines>_RTLDLL;WIN32;TRACE;ENAGLO;ENAQZS;ENAGAL;NFREQ=3;$(BRCC_Defines)</BRCC_Defines>
         <BCC_Defines>_RTLDLL;WIN32;TRACE;ENAGLO;ENAQZS;ENAGAL;ENACMP;NFREQ=3;$(BCC_Defines)</BCC_Defines>
@@ -140,6 +146,8 @@
         <LinkPackageStatics>rtl.lib;vcl.lib;vclx.lib</LinkPackageStatics>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
+        <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
+        <AppEnableHighDPI>true</AppEnableHighDPI>
         <BCC_Defines>_Debug;$(BCC_Defines);$(BCC_Defines)</BCC_Defines>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
@@ -164,6 +172,9 @@
         <BT_BuildType>Debug</BT_BuildType>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
+        <LinkPackageStatics>rtl.lib;vcl.lib;vclx.lib</LinkPackageStatics>
+        <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
+        <AppEnableHighDPI>true</AppEnableHighDPI>
         <BCC_SourceDebuggingOn>false</BCC_SourceDebuggingOn>
     </PropertyGroup>
     <ItemGroup>
@@ -374,18 +385,18 @@
         <CppCompile Include="..\..\src\tides.c">
             <BuildOrder>39</BuildOrder>
         </CppCompile>
-        <FormResources Include="..\appcmn\viewer.dfm"/>
-        <FormResources Include="..\appcmn\timedlg.dfm"/>
-        <FormResources Include="..\appcmn\vieweropt.dfm"/>
         <FormResources Include="kmzconv.dfm"/>
         <FormResources Include="extopt.dfm"/>
+        <FormResources Include="..\appcmn\vieweropt.dfm"/>
+        <FormResources Include="postmain.dfm"/>
+        <FormResources Include="postopt.dfm"/>
+        <FormResources Include="..\appcmn\keydlg.dfm"/>
         <FormResources Include="..\appcmn\confdlg.dfm"/>
         <FormResources Include="..\appcmn\aboutdlg.dfm"/>
-        <FormResources Include="..\appcmn\keydlg.dfm"/>
-        <FormResources Include="..\appcmn\refdlg.dfm"/>
         <FormResources Include="..\appcmn\maskoptdlg.dfm"/>
-        <FormResources Include="postopt.dfm"/>
-        <FormResources Include="postmain.dfm"/>
+        <FormResources Include="..\appcmn\viewer.dfm"/>
+        <FormResources Include="..\appcmn\timedlg.dfm"/>
+        <FormResources Include="..\appcmn\refdlg.dfm"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>
@@ -467,7 +478,7 @@
             </CPlusPlusBuilder.Personality>
             <Platforms>
                 <Platform value="Win32">True</Platform>
-                <Platform value="Win64">False</Platform>
+                <Platform value="Win64">True</Platform>
             </Platforms>
             <Deployment Version="3">
                 <DeployFile LocalName="rtkpost.res" Configuration="Release" Class="ProjectFile">
@@ -487,14 +498,15 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\src\ephemeris.c" Configuration="Release" Class="ProjectFile">
+                <DeployFile LocalName="..\..\src\rcv\novatel.c" Configuration="Release" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile Condition="'$(DynamicRTL)'=='true' And '$(Multithreaded)'=='true'" LocalName="$(BDS)\bin\cc32240mt.dll" Class="DependencyModule">
+                <DeployFile LocalName="..\..\src\ephemeris.c" Configuration="Release" Class="ProjectFile">
                     <Platform Name="Win32">
+                        <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
@@ -504,9 +516,8 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\src\rcv\novatel.c" Configuration="Release" Class="ProjectFile">
+                <DeployFile Condition="'$(DynamicRTL)'=='true' And '$(Multithreaded)'=='true'" LocalName="$(BDS)\bin\cc32240mt.dll" Class="DependencyModule">
                     <Platform Name="Win32">
-                        <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
