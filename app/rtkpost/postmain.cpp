@@ -711,7 +711,7 @@ void __fastcall TMainForm::InputFile1Change(TObject *Sender)
 // callback on output-directory checked -------------------------------------
 void __fastcall TMainForm::OutDirEnaClick(TObject *Sender)
 {
-	UpdateEnable();
+    UpdateEnable();
     SetOutFile();
 }
 // callback on output-directory change --------------------------------------
@@ -926,6 +926,7 @@ int __fastcall TMainForm::GetOption(prcopt_t &prcopt, solopt_t &solopt,
         for (int i=0;i<3;i++) prcopt.rb[i]=0.0;
     }
     else if (RefPosType<=2) {
+        prcopt.refpos = POSOPT_POS;
         for (int i=0;i<3;i++) prcopt.rb[i]=RefPos[i];
     }
     else prcopt.refpos=RefPosType-2;
@@ -1181,10 +1182,16 @@ void __fastcall TMainForm::UpdateEnable(void)
 // load options from ini file -----------------------------------------------
 void __fastcall TMainForm::LoadOpt(void)
 {
+    prcopt_t prcopt;
+    solopt_t solopt;
+    filopt_t filopt;
+    resetsysopts();
+    getsysopts(&prcopt, &solopt, 1, &filopt);
+
     TIniFile *ini=new TIniFile(IniFile);
     AnsiString s;
     char *p;
-    
+
     TimeStart->Checked =ini->ReadInteger("set","timestart",   0);
     TimeEnd->Checked   =ini->ReadInteger("set","timeend",     0);
     TimeY1->Text       =ini->ReadString ("set","timey1",      "2000/01/01");
@@ -1213,134 +1220,134 @@ void __fastcall TMainForm::LoadOpt(void)
     InputFile5->Items  =ReadList(ini,"hist","inputfile5");
     InputFile6->Items  =ReadList(ini,"hist","inputfile6");
     OutputFile->Items  =ReadList(ini,"hist","outputfile");
-    
-    PosMode            =ini->ReadInteger("opt","posmode",        0);
-    Freq               =ini->ReadInteger("opt","freq",           1);
-    Solution           =ini->ReadInteger("opt","solution",       0);
-    ElMask             =ini->ReadFloat  ("opt","elmask",      15.0);
-    SnrMask.ena[0]     =ini->ReadInteger("opt","snrmask_ena1",   0);
-    SnrMask.ena[1]     =ini->ReadInteger("opt","snrmask_ena2",   0);
+
+    PosMode            =ini->ReadInteger("opt","posmode",		prcopt.mode);
+    Freq               =ini->ReadInteger("opt","freq",          prcopt.nf-1);
+    Solution           =ini->ReadInteger("opt","solution",      prcopt.soltype);
+    ElMask             =ini->ReadFloat  ("opt","elmask",		prcopt.elmin);
+    SnrMask.ena[0]     =ini->ReadInteger("opt","snrmask_ena1",  prcopt.snrmask.ena[0]);
+    SnrMask.ena[1]     =ini->ReadInteger("opt","snrmask_ena2",  prcopt.snrmask.ena[1]);
     for (int i=0;i<3;i++) for (int j=0;j<9;j++) {
         SnrMask.mask[i][j]=
-            ini->ReadFloat("opt",s.sprintf("snrmask_%d_%d",i+1,j+1),0.0);
+            ini->ReadFloat("opt",s.sprintf("snrmask_%d_%d",i+1,j+1),35.0);
     }
-    IonoOpt            =ini->ReadInteger("opt","ionoopt",     IONOOPT_BRDC);
-    TropOpt            =ini->ReadInteger("opt","tropopt",     TROPOPT_SAAS);
-    RcvBiasEst         =ini->ReadInteger("opt","rcvbiasest",     0);
-    DynamicModel       =ini->ReadInteger("opt","dynamicmodel",   0);
-    TideCorr           =ini->ReadInteger("opt","tidecorr",       0);
-    SatEphem           =ini->ReadInteger("opt","satephem",       0);
+    IonoOpt            =ini->ReadInteger("opt","ionoopt",     	prcopt.ionoopt);
+    TropOpt            =ini->ReadInteger("opt","tropopt",     	prcopt.tropopt);
+    RcvBiasEst         =ini->ReadInteger("opt","rcvbiasest",    0);
+    DynamicModel       =ini->ReadInteger("opt","dynamicmodel",  prcopt.dynamics);
+    TideCorr           =ini->ReadInteger("opt","tidecorr",      prcopt.tidecorr);
+    SatEphem           =ini->ReadInteger("opt","satephem",      prcopt.sateph);
     ExSats             =ini->ReadString ("opt","exsats",        "");
-    NavSys             =ini->ReadInteger("opt","navsys",   SYS_GPS);
-    PosOpt[0]          =ini->ReadInteger("opt","posopt1",        0);
-    PosOpt[1]          =ini->ReadInteger("opt","posopt2",        0);
-    PosOpt[2]          =ini->ReadInteger("opt","posopt3",        0);
-    PosOpt[3]          =ini->ReadInteger("opt","posopt4",        0);
-    PosOpt[4]          =ini->ReadInteger("opt","posopt5",        0);
-    PosOpt[5]          =ini->ReadInteger("opt","posopt6",        0);
-    MapFunc            =ini->ReadInteger("opt","mapfunc",        0);
+    NavSys             =ini->ReadInteger("opt","navsys",   		prcopt.navsys);
+    PosOpt[0]          =ini->ReadInteger("opt","posopt1",       prcopt.posopt[0]);
+    PosOpt[1]          =ini->ReadInteger("opt","posopt2",       prcopt.posopt[1]);
+    PosOpt[2]          =ini->ReadInteger("opt","posopt3",       prcopt.posopt[2]);
+    PosOpt[3]          =ini->ReadInteger("opt","posopt4",       prcopt.posopt[3]);
+    PosOpt[4]          =ini->ReadInteger("opt","posopt5",       prcopt.posopt[4]);
+    PosOpt[5]          =ini->ReadInteger("opt","posopt6",       prcopt.posopt[5]);
+    MapFunc            =ini->ReadInteger("opt","mapfunc",       0);
+
+    AmbRes             =ini->ReadInteger("opt","ambres",        prcopt.modear);
+    GloAmbRes          =ini->ReadInteger("opt","gloambres",     prcopt.glomodear);
+    BdsAmbRes          =ini->ReadInteger("opt","bdsambres",     prcopt.bdsmodear);
+    ValidThresAR       =ini->ReadFloat  ("opt","validthresar", 	prcopt.thresar[0]);
+    ThresAR2           =ini->ReadFloat  ("opt","thresar2",  	prcopt.thresar[1]);
+    ThresAR3           =ini->ReadFloat  ("opt","thresar3",    	prcopt.thresar[2]);
+    LockCntFixAmb      =ini->ReadInteger("opt","lockcntfixamb", prcopt.minlock);
+    FixCntHoldAmb      =ini->ReadInteger("opt","fixcntholdamb", prcopt.minfix);
+    ElMaskAR           =ini->ReadFloat  ("opt","elmaskar",     	prcopt.elmaskar);
+    ElMaskHold         =ini->ReadFloat  ("opt","elmaskhold",   	prcopt.elmaskhold);
+    OutCntResetAmb     =ini->ReadInteger("opt","outcntresetbias",prcopt.maxout);
+    SlipThres          =ini->ReadFloat  ("opt","slipthres",   	prcopt.thresslip);
+    MaxAgeDiff         =ini->ReadFloat  ("opt","maxagediff", 	prcopt.maxtdiff);
+    RejectThres        =ini->ReadFloat  ("opt","rejectthres", 	prcopt.maxinno);
+    VarHoldAmb         =ini->ReadFloat  ("opt","varholdamb", 	prcopt.varholdamb);
+    GainHoldAmb        =ini->ReadFloat  ("opt","gainholdamb", 	prcopt.gainholdamb);
+    RejectGdop         =ini->ReadFloat  ("opt","rejectgdop",  	prcopt.maxgdop);
+    ARIter             =ini->ReadInteger("opt","ariter",        prcopt.armaxiter);
+    NumIter            =ini->ReadInteger("opt","numiter",       prcopt.niter);
+    MinFixSats         =ini->ReadInteger("opt","minfixsats",    prcopt.minfixsats);
+    MinHoldSats        =ini->ReadInteger("opt","minholdsats",   prcopt.minholdsats);
+    MinDropSats        =ini->ReadInteger("opt","mindropsats",   prcopt.mindropsats);
+    MaxPosVarAR        =ini->ReadFloat  ("opt","maxposvarar", 	prcopt.thresar[1]);
+    ARFilter           =ini->ReadInteger("opt","arfilter",      prcopt.arfilter);
+    RcvStds            =ini->ReadInteger("opt","rcvstds",       prcopt.rcvstds);
+    CodeSmooth         =ini->ReadInteger("opt","codesmooth",    prcopt.codesmooth);
+    BaseLine[0]        =ini->ReadFloat  ("opt","baselinelen",  	prcopt.baseline[0]);
+    BaseLine[1]        =ini->ReadFloat  ("opt","baselinesig",  	prcopt.baseline[1]);
+    BaseLineConst      =ini->ReadInteger("opt","baselineconst", 0);
+
+    SolFormat          =ini->ReadInteger("opt","solformat",     solopt.posf);
+    TimeFormat         =ini->ReadInteger("opt","timeformat",    solopt.timef);
+    TimeDecimal        =ini->ReadInteger("opt","timedecimal",   solopt.timeu);
+    LatLonFormat       =ini->ReadInteger("opt","latlonformat",  solopt.degf);
+    FieldSep           =ini->ReadString ("opt","fieldsep",      solopt.sep);
+    OutputHead         =ini->ReadInteger("opt","outputhead",    solopt.outhead);
+    OutputOpt          =ini->ReadInteger("opt","outputopt",     solopt.outopt);
+    OutputSingle       =ini->ReadInteger("opt","outputsingle",  prcopt.outsingle);
+    MaxSolStd          =ini->ReadFloat  ("opt","maxsolstd",    	solopt.maxsolstd);
+    OutputDatum        =ini->ReadInteger("opt","outputdatum",   solopt.datum);
+    OutputHeight       =ini->ReadInteger("opt","outputheight",  solopt.height);
+    OutputGeoid        =ini->ReadInteger("opt","outputgeoid",   solopt.geoid);
+    SolStatic          =ini->ReadInteger("opt","solstatic",     solopt.solstatic);
+    DebugTrace         =ini->ReadInteger("opt","debugtrace",    solopt.trace);
+    DebugStatus        =ini->ReadInteger("opt","debugstatus",   solopt.sstat);
     
-    AmbRes             =ini->ReadInteger("opt","ambres",         1);
-    GloAmbRes          =ini->ReadInteger("opt","gloambres",      1);
-    BdsAmbRes          =ini->ReadInteger("opt","bdsambres",      1);
-    ValidThresAR       =ini->ReadFloat  ("opt","validthresar", 3.0);
-    ThresAR2           =ini->ReadFloat  ("opt","thresar2",  0.9999);
-    ThresAR3           =ini->ReadFloat  ("opt","thresar3",    0.25);
-    LockCntFixAmb      =ini->ReadInteger("opt","lockcntfixamb",  0);
-    FixCntHoldAmb      =ini->ReadInteger("opt","fixcntholdamb", 10);
-    ElMaskAR           =ini->ReadFloat  ("opt","elmaskar",     0.0);
-    ElMaskHold         =ini->ReadFloat  ("opt","elmaskhold",   0.0);
-    OutCntResetAmb     =ini->ReadInteger("opt","outcntresetbias",5);
-    SlipThres          =ini->ReadFloat  ("opt","slipthres",   0.05);
-    MaxAgeDiff         =ini->ReadFloat  ("opt","maxagediff",  30.0);
-    RejectThres        =ini->ReadFloat  ("opt","rejectthres", 30.0);
-    VarHoldAmb         =ini->ReadFloat  ("opt","varholdamb", 0.001);
-    GainHoldAmb        =ini->ReadFloat  ("opt","gainholdamb", 0.01);
-    RejectGdop         =ini->ReadFloat  ("opt","rejectgdop",  30.0);
-    ARIter             =ini->ReadInteger("opt","ariter",         1);
-    NumIter            =ini->ReadInteger("opt","numiter",        1);
-    MinFixSats         =ini->ReadInteger("opt","minfixsats",     2);
-    MinHoldSats        =ini->ReadInteger("opt","minholdsats",    2);
-    MinDropSats        =ini->ReadInteger("opt","mindropsats",   20);
-    MaxPosVarAR        =ini->ReadFloat  ("opt","maxposvarar", 0.99);
-    ARFilter           =ini->ReadInteger("opt","arfilter",       0);
-    RcvStds            =ini->ReadInteger("opt","rcvstds",       0);
-    CodeSmooth         =ini->ReadInteger("opt","codesmooth",     0);
-    BaseLine[0]        =ini->ReadFloat  ("opt","baselinelen",  0.0);
-    BaseLine[1]        =ini->ReadFloat  ("opt","baselinesig",  0.0);
-    BaseLineConst      =ini->ReadInteger("opt","baselineconst",  0);
+    MeasErrR1          =ini->ReadFloat  ("opt","measeratio1",	prcopt.eratio[0]);
+    MeasErrR2          =ini->ReadFloat  ("opt","measeratio2",	prcopt.eratio[1]);
+    MeasErr2           =ini->ReadFloat  ("opt","measerr2",   	prcopt.err[1]);
+    MeasErr3           =ini->ReadFloat  ("opt","measerr3",   	prcopt.err[2]);
+    MeasErr4           =ini->ReadFloat  ("opt","measerr4",   	prcopt.err[3]);
+    MeasErr5           =ini->ReadFloat  ("opt","measerr5",  	prcopt.err[4]);
+    SatClkStab         =ini->ReadFloat  ("opt","satclkstab", 	prcopt.sclkstab);
+    PrNoise1           =ini->ReadFloat  ("opt","prnoise1",    	prcopt.prn[0]);
+    PrNoise2           =ini->ReadFloat  ("opt","prnoise2",    	prcopt.prn[1]);
+    PrNoise3           =ini->ReadFloat  ("opt","prnoise3",    	prcopt.prn[2]);
+    PrNoise4           =ini->ReadFloat  ("opt","prnoise4",    	prcopt.prn[3]);
+    PrNoise5           =ini->ReadFloat  ("opt","prnoise5",    	prcopt.prn[4]);
     
-    SolFormat          =ini->ReadInteger("opt","solformat",      0);
-    TimeFormat         =ini->ReadInteger("opt","timeformat",     1);
-    TimeDecimal        =ini->ReadInteger("opt","timedecimal",    3);
-    LatLonFormat       =ini->ReadInteger("opt","latlonformat",   0);
-    FieldSep           =ini->ReadString ("opt","fieldsep",      "");
-    OutputHead         =ini->ReadInteger("opt","outputhead",     1);
-    OutputOpt          =ini->ReadInteger("opt","outputopt",      1);
-    OutputSingle       =ini->ReadInteger("opt","outputsingle",   0);
-    MaxSolStd          =ini->ReadFloat  ("opt","maxsolstd",    0.0);
-    OutputDatum        =ini->ReadInteger("opt","outputdatum",    0);
-    OutputHeight       =ini->ReadInteger("opt","outputheight",   0);
-    OutputGeoid        =ini->ReadInteger("opt","outputgeoid",    0);
-    SolStatic          =ini->ReadInteger("opt","solstatic",      0);
-    DebugTrace         =ini->ReadInteger("opt","debugtrace",     0);
-    DebugStatus        =ini->ReadInteger("opt","debugstatus",    0);
+    RovPosType         =ini->ReadInteger("opt","rovpostype",    prcopt.rovpos);
+    RefPosType         =ini->ReadInteger("opt","refpostype",    POSOPT_SINGLE + 2);
+    RovPos[0]          =ini->ReadFloat  ("opt","rovpos1",      	prcopt.ru[0]);
+    RovPos[1]          =ini->ReadFloat  ("opt","rovpos2",     	prcopt.ru[1]);
+    RovPos[2]          =ini->ReadFloat  ("opt","rovpos3",      	prcopt.ru[2]);
+    RefPos[0]          =ini->ReadFloat  ("opt","refpos1",      	prcopt.rb[0]);
+    RefPos[1]          =ini->ReadFloat  ("opt","refpos2",      	prcopt.rb[0]);
+    RefPos[2]          =ini->ReadFloat  ("opt","refpos3",      	prcopt.rb[0]);
+    RovAntPcv          =ini->ReadInteger("opt","rovantpcv",     0);
+    RefAntPcv          =ini->ReadInteger("opt","refantpcv",     0);
+    RovAnt             =ini->ReadString ("opt","rovant",        prcopt.anttype[0]);
+    RefAnt             =ini->ReadString ("opt","refant",        prcopt.anttype[1]);
+    RovAntE            =ini->ReadFloat  ("opt","rovante",      	prcopt.antdel[0][0]);
+    RovAntN            =ini->ReadFloat  ("opt","rovantn",      	prcopt.antdel[0][1]);
+    RovAntU            =ini->ReadFloat  ("opt","rovantu",      	prcopt.antdel[0][2]);
+    RefAntE            =ini->ReadFloat  ("opt","refante",      	prcopt.antdel[1][0]);
+    RefAntN            =ini->ReadFloat  ("opt","refantn",      	prcopt.antdel[1][1]);
+    RefAntU            =ini->ReadFloat  ("opt","refantu",      	prcopt.antdel[1][2]);
+
+    RnxOpts1           =ini->ReadString ("opt","rnxopts1",      prcopt.rnxopt[0]);
+    RnxOpts2           =ini->ReadString ("opt","rnxopts2",      prcopt.rnxopt[1]);
+    PPPOpts            =ini->ReadString ("opt","pppopts",       prcopt.pppopt);
     
-    MeasErrR1          =ini->ReadFloat  ("opt","measeratio1",100.0);
-    MeasErrR2          =ini->ReadFloat  ("opt","measeratio2",100.0);
-    MeasErr2           =ini->ReadFloat  ("opt","measerr2",   0.003);
-    MeasErr3           =ini->ReadFloat  ("opt","measerr3",   0.003);
-    MeasErr4           =ini->ReadFloat  ("opt","measerr4",   0.000);
-    MeasErr5           =ini->ReadFloat  ("opt","measerr5",  10.000);
-    SatClkStab         =ini->ReadFloat  ("opt","satclkstab", 5E-12);
-    PrNoise1           =ini->ReadFloat  ("opt","prnoise1",    1E-4);
-    PrNoise2           =ini->ReadFloat  ("opt","prnoise2",    1E-3);
-    PrNoise3           =ini->ReadFloat  ("opt","prnoise3",    1E-4);
-    PrNoise4           =ini->ReadFloat  ("opt","prnoise4",    1E+1);
-    PrNoise5           =ini->ReadFloat  ("opt","prnoise5",    1E+1);
-    
-    RovPosType         =ini->ReadInteger("opt","rovpostype",     0);
-    RefPosType         =ini->ReadInteger("opt","refpostype",     0);
-    RovPos[0]          =ini->ReadFloat  ("opt","rovpos1",      0.0);
-    RovPos[1]          =ini->ReadFloat  ("opt","rovpos2",      0.0);
-    RovPos[2]          =ini->ReadFloat  ("opt","rovpos3",      0.0);
-    RefPos[0]          =ini->ReadFloat  ("opt","refpos1",      0.0);
-    RefPos[1]          =ini->ReadFloat  ("opt","refpos2",      0.0);
-    RefPos[2]          =ini->ReadFloat  ("opt","refpos3",      0.0);
-    RovAntPcv          =ini->ReadInteger("opt","rovantpcv",      0);
-    RefAntPcv          =ini->ReadInteger("opt","refantpcv",      0);
-    RovAnt             =ini->ReadString ("opt","rovant",        "");
-    RefAnt             =ini->ReadString ("opt","refant",        "");
-    RovAntE            =ini->ReadFloat  ("opt","rovante",      0.0);
-    RovAntN            =ini->ReadFloat  ("opt","rovantn",      0.0);
-    RovAntU            =ini->ReadFloat  ("opt","rovantu",      0.0);
-    RefAntE            =ini->ReadFloat  ("opt","refante",      0.0);
-    RefAntN            =ini->ReadFloat  ("opt","refantn",      0.0);
-    RefAntU            =ini->ReadFloat  ("opt","refantu",      0.0);
-    
-    RnxOpts1           =ini->ReadString ("opt","rnxopts1",      "");
-    RnxOpts2           =ini->ReadString ("opt","rnxopts2",      "");
-    PPPOpts            =ini->ReadString ("opt","pppopts",       "");
-    
-    AntPcvFile         =ini->ReadString ("opt","antpcvfile",    "");
-    IntpRefObs         =ini->ReadInteger("opt","intprefobs",     0);
-    SbasSat            =ini->ReadInteger("opt","sbassat",        0);
-    NetRSCorr          =ini->ReadInteger("opt","netrscorr",      0);
-    SatClkCorr         =ini->ReadInteger("opt","satclkcorr",     0);
-    SbasCorr           =ini->ReadInteger("opt","sbascorr",       0);
-    SbasCorr1          =ini->ReadInteger("opt","sbascorr1",      0);
-    SbasCorr2          =ini->ReadInteger("opt","sbascorr2",      0);
-    SbasCorr3          =ini->ReadInteger("opt","sbascorr3",      0);
-    SbasCorr4          =ini->ReadInteger("opt","sbascorr4",      0);
+    AntPcvFile         =ini->ReadString ("opt","antpcvfile",    filopt.rcvantp);
+    IntpRefObs         =ini->ReadInteger("opt","intprefobs",    prcopt.intpref);
+    SbasSat            =ini->ReadInteger("opt","sbassat",       prcopt.sbassatsel);
+    NetRSCorr          =ini->ReadInteger("opt","netrscorr",     0);
+    SatClkCorr         =ini->ReadInteger("opt","satclkcorr",    0);
+    SbasCorr           =ini->ReadInteger("opt","sbascorr",      0);
+    SbasCorr1          =ini->ReadInteger("opt","sbascorr1",     0);
+    SbasCorr2          =ini->ReadInteger("opt","sbascorr2",     0);
+    SbasCorr3          =ini->ReadInteger("opt","sbascorr3",     0);
+    SbasCorr4          =ini->ReadInteger("opt","sbascorr4",     0);
     SbasCorrFile       =ini->ReadString ("opt","sbascorrfile",  "");
     PrecEphFile        =ini->ReadString ("opt","precephfile",   "");
-    SatPcvFile         =ini->ReadString ("opt","satpcvfile",    "");
-    StaPosFile         =ini->ReadString ("opt","staposfile",    "");
-    GeoidDataFile      =ini->ReadString ("opt","geoiddatafile", "");
-    IonoFile           =ini->ReadString ("opt","ionofile",      "");
-    EOPFile            =ini->ReadString ("opt","eopfile",       "");
-    DCBFile            =ini->ReadString ("opt","dcbfile",       "");
-    BLQFile            =ini->ReadString ("opt","blqfile",       "");
+    SatPcvFile         =ini->ReadString ("opt","satpcvfile",    filopt.satantp);
+    StaPosFile         =ini->ReadString ("opt","staposfile",    filopt.stapos);
+    GeoidDataFile      =ini->ReadString ("opt","geoiddatafile", filopt.geoid);
+    IonoFile           =ini->ReadString ("opt","ionofile",      filopt.iono);
+    EOPFile            =ini->ReadString ("opt","eopfile",      	filopt.eop);
+    DCBFile            =ini->ReadString ("opt","dcbfile",       filopt.dcb);
+    BLQFile            =ini->ReadString ("opt","blqfile",       filopt.blq);
     GoogleEarthFile    =ini->ReadString ("opt","googleearthfile",GOOGLE_EARTH);
     
     RovList="";
@@ -1621,54 +1628,54 @@ void __fastcall TMainForm::SaveOpt(void)
 
 void __fastcall TMainForm::Panel4Resize(TObject *Sender)
 {
-	TButton *btns[]={
-		BtnInputFile1,BtnInputFile2,BtnInputFile3,BtnInputFile4,
-		BtnInputFile5,BtnInputFile6
-	};
-	TComboBox *boxes[]={
-		InputFile1,InputFile2,InputFile3,InputFile4,InputFile5,InputFile6
-	};
-	int w=Panel4->Width;
-	
-	for (int i=0;i<6;i++) {
-		btns[i]->Left=w-btns[i]->Width-5;
-		boxes[i]->Width=w-btns[i]->Width-boxes[i]->Left-6;
-	}
-	BtnInputView1->Left=InputFile1->Left+InputFile1->Width-BtnInputView1->Width;
-	BtnInputPlot1->Left=BtnInputView1->Left-BtnInputPlot1->Width;
-	BtnInputView2->Left=InputFile2->Left+InputFile2->Width-BtnInputView2->Width;
-	BtnInputPlot2->Left=BtnInputView2->Left-BtnInputPlot2->Width;
-	BtnInputView6->Left=InputFile3->Left+InputFile3->Width-BtnInputView6->Width;
-	BtnInputView5->Left=BtnInputView6->Left-BtnInputView5->Width;
-	BtnInputView4->Left=BtnInputView5->Left-BtnInputView4->Width;
-	BtnInputView3->Left=BtnInputView4->Left-BtnInputView3->Width;
+    TButton *btns[]={
+        BtnInputFile1,BtnInputFile2,BtnInputFile3,BtnInputFile4,
+        BtnInputFile5,BtnInputFile6
+    };
+    TComboBox *boxes[]={
+        InputFile1,InputFile2,InputFile3,InputFile4,InputFile5,InputFile6
+    };
+    int w=Panel4->Width;
+    
+    for (int i=0;i<6;i++) {
+        btns[i]->Left=w-btns[i]->Width-5;
+        boxes[i]->Width=w-btns[i]->Width-boxes[i]->Left-6;
+    }
+    BtnInputView1->Left=InputFile1->Left+InputFile1->Width-BtnInputView1->Width;
+    BtnInputPlot1->Left=BtnInputView1->Left-BtnInputPlot1->Width;
+    BtnInputView2->Left=InputFile2->Left+InputFile2->Width-BtnInputView2->Width;
+    BtnInputPlot2->Left=BtnInputView2->Left-BtnInputPlot2->Width;
+    BtnInputView6->Left=InputFile3->Left+InputFile3->Width-BtnInputView6->Width;
+    BtnInputView5->Left=BtnInputView6->Left-BtnInputView5->Width;
+    BtnInputView4->Left=BtnInputView5->Left-BtnInputView4->Width;
+    BtnInputView3->Left=BtnInputView4->Left-BtnInputView3->Width;
 }
 //---------------------------------------------------------------------------
 
 void __fastcall TMainForm::Panel5Resize(TObject *Sender)
 {
-	int w=Panel5->Width;
-	
-	BtnOutDir->Left=w-BtnOutDir->Width-5;
-	OutDir->Width=w-BtnOutDir->Width-OutDir->Left-6;
-	BtnOutputFile->Left=w-BtnOutputFile->Width-5;
-	OutputFile->Width=w-BtnOutputFile->Width-OutputFile->Left-6;
+    int w=Panel5->Width;
+    
+    BtnOutDir->Left=w-BtnOutDir->Width-5;
+    OutDir->Width=w-BtnOutDir->Width-OutDir->Left-6;
+    BtnOutputFile->Left=w-BtnOutputFile->Width-5;
+    OutputFile->Width=w-BtnOutputFile->Width-OutputFile->Left-6;
 }
 //---------------------------------------------------------------------------
 
 void __fastcall TMainForm::Panel2Resize(TObject *Sender)
 {
-	TBitBtn *btns[]={
-		BtnPlot,BtnView,BtnToKML,BtnOption,BtnExec,BtnExit
-	};
-	int w=(Panel2->Width-2)/6;
-	
-	for (int i=0;i<6;i++) {
-		btns[i]->Width=w;
-		btns[i]->Left=i*w+1;
-	}
-	BtnAbort->Width=BtnExec->Width;
-	BtnAbort->Left =BtnExec->Left;
+    TBitBtn *btns[]={
+        BtnPlot,BtnView,BtnToKML,BtnOption,BtnExec,BtnExit
+    };
+    int w=(Panel2->Width-2)/6;
+    
+    for (int i=0;i<6;i++) {
+        btns[i]->Width=w;
+        btns[i]->Left=i*w+1;
+    }
+    BtnAbort->Width=BtnExec->Width;
+    BtnAbort->Left =BtnExec->Left;
 }
 //---------------------------------------------------------------------------
 

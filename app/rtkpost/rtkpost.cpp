@@ -16,7 +16,7 @@ USEFORM("..\appcmn\maskoptdlg.cpp", MaskOptDialog);
 USEFORM("postopt.cpp", OptDialog);
 USEFORM("postmain.cpp", MainForm);
 //---------------------------------------------------------------------------
-WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
 	try
 	{
