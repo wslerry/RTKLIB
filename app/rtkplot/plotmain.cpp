@@ -683,9 +683,9 @@ void __fastcall TPlot::MenuMapLayerClick(TObject *Sender)
 {
     trace(3,"MenuMapLayerClick\n");
     
-	if (VecMapDialog->ShowModal()!=mrOk) return;
-	
-	UpdatePlot();
+    if (VecMapDialog->ShowModal()!=mrOk) return;
+    
+    UpdatePlot();
     UpdateEnable();
 }
 // callback on menu-solution-source -----------------------------------------
@@ -840,7 +840,7 @@ void __fastcall TPlot::MenuBrowseClick(TObject *Sender)
 {
     trace(3,"MenuBrowseClick\n");
     
-	MenuBrowse->Checked=!MenuBrowse->Checked;
+    MenuBrowse->Checked=!MenuBrowse->Checked;
     if (MenuBrowse->Checked) {
         Splitter1->Left=PanelBrowse->Width;
         PanelBrowse->Visible=true;
@@ -1019,10 +1019,10 @@ void __fastcall TPlot::MenuMaxClick(TObject *Sender)
 {
     TRect rect;
     ::SystemParametersInfo(SPI_GETWORKAREA,0,&rect,0);
-	Top=rect.Top;
-	Left=rect.Left;
-	Width=rect.Width();
-	Height=rect.Height();
+    Top=rect.Top;
+    Left=rect.Left;
+    Width=rect.Width();
+    Height=rect.Height();
     GoogleEarthView->Hide();
     GoogleMapView->Hide();
 }
@@ -1031,10 +1031,10 @@ void __fastcall TPlot::MenuPlotGEClick(TObject *Sender)
 {
     TRect rect;
     ::SystemParametersInfo(SPI_GETWORKAREA,0,&rect,0);
-	Top=rect.Top;
-	Left=rect.Left;
-	Width=rect.Width()/2;
-	Height=rect.Height();
+    Top=rect.Top;
+    Left=rect.Left;
+    Width=rect.Width()/2;
+    Height=rect.Height();
     GoogleEarthView->Top=Top;
     GoogleEarthView->Left=Width;
     GoogleEarthView->Width=Width;
@@ -1047,10 +1047,10 @@ void __fastcall TPlot::MenuPlotGMClick(TObject *Sender)
 {
     TRect rect;
     ::SystemParametersInfo(SPI_GETWORKAREA,0,&rect,0);
-	Top=rect.Top;
-	Left=rect.Left;
-	Width=rect.Width()/2;
-	Height=rect.Height();
+    Top=rect.Top;
+    Left=rect.Left;
+    Width=rect.Width()/2;
+    Height=rect.Height();
     GoogleMapView->Top=Top;
     GoogleMapView->Left=Width;
     GoogleMapView->Width=Width;
@@ -1063,10 +1063,10 @@ void __fastcall TPlot::MenuPlotGEGMClick(TObject *Sender)
 {
     TRect rect;
     ::SystemParametersInfo(SPI_GETWORKAREA,0,&rect,0);
-	Top=rect.Top;
-	Left=rect.Left;
-	Width=rect.Width()/2;
-	Height=rect.Height();
+    Top=rect.Top;
+    Left=rect.Left;
+    Width=rect.Width()/2;
+    Height=rect.Height();
     GoogleEarthView->Top=Top;
     GoogleEarthView->Left=Width;
     GoogleEarthView->Width=Width;
@@ -1089,19 +1089,19 @@ void __fastcall TPlot::DispGesture(TObject *Sender, const TGestureEventInfo &Eve
     b=EventInfo.Flags.Contains(gfBegin);
     e=EventInfo.Flags.Contains(gfEnd);
     
-	if (EventInfo.GestureID==Controls::igiZoom) {
+    if (EventInfo.GestureID==Controls::igiZoom) {
         s.sprintf("zoom: Location=%d,%d,Flag=%d,%d,Angle=%.1f,Disnance=%d",
                   EventInfo.Location.X,EventInfo.Location.Y,b,e,
                   EventInfo.Angle,EventInfo.Distance);
         Message1->Caption=s;
     }
-	else if (EventInfo.GestureID==Controls::igiPan) {
+    else if (EventInfo.GestureID==Controls::igiPan) {
         s.sprintf("pan: Location=%d,%d,Flag=%d,%d,Angle=%.1f,Disnance=%d",
                   EventInfo.Location.X,EventInfo.Location.Y,b,e,
                   EventInfo.Angle,EventInfo.Distance);
         Message1->Caption=s;
     }
-	else if (EventInfo.GestureID==Controls::igiRotate) {
+    else if (EventInfo.GestureID==Controls::igiRotate) {
         s.sprintf("rotate: Location=%d,%d,Flag=%d,%d,Angle=%.1f,Disnance=%d",
                   EventInfo.Location.X,EventInfo.Location.Y,b,e,
                   EventInfo.Angle,EventInfo.Distance);
@@ -1184,7 +1184,7 @@ void __fastcall TPlot::BtnShowSkyplotClick(TObject *Sender)
 {
     trace(3,"BtnShowSkyplotClick\n");
     
-	UpdateEnable();
+    UpdateEnable();
     Refresh();
 }
 //---------------------------------------------------------------------------
@@ -1192,7 +1192,7 @@ void __fastcall TPlot::BtnShowGridClick(TObject *Sender)
 {
     trace(3,"BtnShowGridClick\n");
     
-	UpdateEnable();
+    UpdateEnable();
     Refresh();
 }
 // callback on button-plot-1-onoff ------------------------------------------
@@ -1359,7 +1359,7 @@ void __fastcall TPlot::BtnReloadClick(TObject *Sender)
 // callback on button-message 2 ---------------------------------------------
 void __fastcall TPlot::BtnMessage2Click(TObject *Sender)
 {
-	if (++PointType>2) PointType=0;
+    if (++PointType>2) PointType=0;
 }
 // callback on plot-type selection change -----------------------------------
 void __fastcall TPlot::PlotTypeSChange(TObject *Sender)
@@ -2726,19 +2726,19 @@ void __fastcall TPlot::LoadOpt(void)
     TimeLabel    =ini->ReadInteger("plot","timelabel",     1);
     LatLonFmt    =ini->ReadInteger("plot","latlonfmt",     0);
     AutoScale    =ini->ReadInteger("plot","autoscale",     1);
-    ShowStats    =ini->ReadInteger("plot","showstats",     0);
+    ShowStats    =ini->ReadInteger("plot","showstats",     1);
     ShowLabel    =ini->ReadInteger("plot","showlabel",     1);
     ShowGLabel   =ini->ReadInteger("plot","showglabel",    1);
     ShowCompass  =ini->ReadInteger("plot","showcompass",   0);
     ShowScale    =ini->ReadInteger("plot","showscale",     1);
     ShowArrow    =ini->ReadInteger("plot","showarrow",     0);
-    ShowSlip     =ini->ReadInteger("plot","showslip",      0);
-    ShowHalfC    =ini->ReadInteger("plot","showhalfc",     0);
+    ShowSlip     =ini->ReadInteger("plot","showslip",      2);
+    ShowHalfC    =ini->ReadInteger("plot","showhalfc",     1);
     ShowErr      =ini->ReadInteger("plot","showerr",       0);
     ShowEph      =ini->ReadInteger("plot","showeph",       0);
     PlotStyle    =ini->ReadInteger("plot","plotstyle",     0);
     MarkSize     =ini->ReadInteger("plot","marksize",      2);
-    NavSys       =ini->ReadInteger("plot","navsys",  SYS_GPS);
+    NavSys       =ini->ReadInteger("plot","navsys",  SYS_ALL);
     AnimCycle    =ini->ReadInteger("plot","animcycle",    10);
     RefCycle     =ini->ReadInteger("plot","refcycle",    100);
     HideLowSat   =ini->ReadInteger("plot","hidelowsat",    0);
@@ -2985,21 +2985,21 @@ void __fastcall TPlot::SaveOpt(void)
 
 void __fastcall TPlot::FileMaskChange(TObject *Sender)
 {
-	switch (FileMask->ItemIndex) {
-		case 0 : FileList->Mask="*.pos" ; break;
-		case 1 : FileList->Mask="*.nmea"; break;
-		case 2 : FileList->Mask="*.stat"; break;
-		default: FileList->Mask="*.*"   ; break;
-	}
+    switch (FileMask->ItemIndex) {
+        case 0 : FileList->Mask="*.pos" ; break;
+        case 1 : FileList->Mask="*.nmea"; break;
+        case 2 : FileList->Mask="*.stat"; break;
+        default: FileList->Mask="*.*"   ; break;
+    }
 }
 //---------------------------------------------------------------------------
 
 void __fastcall TPlot::FileListClick(TObject *Sender)
 {
-	TStringList *file=new TStringList;
-	file->Add(FileList->FileName);
-	Plot->ReadSol(file,0);
-	delete file;
+    TStringList *file=new TStringList;
+    file->Add(FileList->FileName);
+    Plot->ReadSol(file,0);
+    delete file;
 }
 //---------------------------------------------------------------------------
 

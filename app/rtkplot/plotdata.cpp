@@ -22,9 +22,9 @@ static const char *XMLNS="http://www.topografix.com/GPX/1/1";
 // read solutions -----------------------------------------------------------
 void __fastcall TPlot::ReadSol(TStrings *files, int sel)
 {
-	FILETIME tc,ta,tw;
-	SYSTEMTIME st;
-	HANDLE h;
+    FILETIME tc,ta,tw;
+    SYSTEMTIME st;
+    HANDLE h;
     solbuf_t sol={0};
     AnsiString s;
     gtime_t ts,te;
@@ -39,23 +39,23 @@ void __fastcall TPlot::ReadSol(TStrings *files, int sel)
     if (files->Count<=0) return;
     
     ReadWaitStart();
-	
-	s=files->Strings[0];
     
-	if ((h=CreateFile(s.c_str(),GENERIC_READ,0,NULL,OPEN_EXISTING,
-					  FILE_ATTRIBUTE_NORMAL,0))==INVALID_HANDLE_VALUE) {
-		return;
-	}
-	GetFileTime(h,&tc,&ta,&tw);
-	CloseHandle(h);
-	FileTimeToSystemTime(&tc,&st); // file create time
-	ep[0]=st.wYear;
-	ep[1]=st.wMonth;
-	ep[2]=st.wDay;
-	ep[3]=st.wHour;
-	ep[4]=st.wMinute;
-	ep[5]=st.wSecond;
-	sol.time=utc2gpst(epoch2time(ep));
+    s=files->Strings[0];
+    
+    if ((h=CreateFile(s.c_str(),GENERIC_READ,0,NULL,OPEN_EXISTING,
+                      FILE_ATTRIBUTE_NORMAL,0))==INVALID_HANDLE_VALUE) {
+        return;
+    }
+    GetFileTime(h,&tc,&ta,&tw);
+    CloseHandle(h);
+    FileTimeToSystemTime(&tc,&st); // file create time
+    ep[0]=st.wYear;
+    ep[1]=st.wMonth;
+    ep[2]=st.wDay;
+    ep[3]=st.wHour;
+    ep[4]=st.wMinute;
+    ep[5]=st.wSecond;
+    sol.time=utc2gpst(epoch2time(ep));
     
     for (i=0;i<files->Count&&n<MAXNFILE;i++) {
         strcpy(paths[n++],U2A(files->Strings[i]).c_str());
@@ -433,7 +433,7 @@ void __fastcall TPlot::ReadMapData(AnsiString file)
         image->LoadFromFile(file);
     }
     catch (Exception &exception) {
-        ShowMsg(s.sprintf("map file read error: %s",file));
+        ShowMsg(s.sprintf("map file read error: %s",file.c_str()));
         ShowLegend(NULL);
         return;
     }
@@ -643,7 +643,7 @@ void __fastcall TPlot::ReadSkyData(AnsiString file)
         image->LoadFromFile(file);
     }
     catch (Exception &exception) {
-        ShowMsg(s.sprintf("sky image file read error: %s",file));
+        ShowMsg(s.sprintf("sky image file read error: %s",file.c_str()));
         ShowLegend(NULL);
         return;
     }
@@ -746,7 +746,7 @@ void __fastcall TPlot::ReadShapeFile(TStrings *files)
 // read waypoint ------------------------------------------------------------
 void __fastcall TPlot::ReadWaypoint(AnsiString file)
 {
-    UTF8String label1(L"<ogr:–¼Ì>"),label2(L"<ogr:“_–¼Ì>");
+    UTF8String label1(L"<ogr:Â–Â¼ÂÃŒ>"),label2(L"<ogr:Â“_Â–Â¼ÂÃŒ>");
     AnsiString s;
     FILE *fp;
     char buff[1024],name[256]="",*p;
@@ -814,7 +814,7 @@ void __fastcall TPlot::SaveWaypoint(AnsiString file)
             fprintf(fp," <ele>%.4f</ele>\n",PntPos[i][2]);
         }
         UTF8String str(PntName[i]);
-        fprintf(fp," <name>%s</name>\n",str); // UTF-8
+        fprintf(fp," <name>%s</name>\n",str.c_str()); // UTF-8
         fprintf(fp,"</wpt>\n");
     }
     fprintf(fp,"%s\n",TAILGPX);
@@ -852,7 +852,7 @@ void __fastcall TPlot::ReadStaPos(const char *file, const char *sta,
             break;
         }
     }
-	fclose(fp);
+    fclose(fp);
 }
 // save dop -----------------------------------------------------------------
 void __fastcall TPlot::SaveDop(AnsiString file)
@@ -861,12 +861,12 @@ void __fastcall TPlot::SaveDop(AnsiString file)
     gtime_t time;
     double azel[MAXOBS*2],dop[4],tow;
     int i,j,ns,week;
-    char tstr[64],*tlabel;
-    
+    char tstr[64];
+    const char *tlabel;
     trace(3,"SaveDop: file=%s\n",file.c_str());
     
     if (!(fp=fopen(file.c_str(),"w"))) return;
-    
+
     tlabel=TimeLabel<=1?"TIME (GPST)":(TimeLabel<=2?"TIME (UTC)":"TIME (JST)");
     
     fprintf(fp,"%% %-*s %6s %8s %8s %8s %8s (EL>=%.0fdeg)\n",TimeLabel==0?13:19,
@@ -912,7 +912,8 @@ void __fastcall TPlot::SaveSnrMp(AnsiString file)
     AnsiString ObsTypeText=ObsType2->Text;
     gtime_t time;
     double tow;
-    char sat[32],mp[32],tstr[64],*tlabel,*code=ObsTypeText.c_str()+1;
+    char sat[32],mp[32],tstr[64],*code=ObsTypeText.c_str()+1;
+    const char *tlabel;
     int i,j,k,week;
     
     trace(3,"SaveSnrMp: file=%s\n",file.c_str());

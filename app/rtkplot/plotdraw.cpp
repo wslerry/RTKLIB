@@ -1641,7 +1641,7 @@ void __fastcall TPlot::DrawSnr(int level)
                 
                 GraphG[i]->GetPos(p1,p2);
                 p1.x=p2.x-8; p1.y+=3;
-                DrawLabel(GraphG[i],p1,s.sprintf("%.*f %s",i==1?4:1,yp[0],unit[i]),2,2);
+                DrawLabel(GraphG[i],p1,s.sprintf("%.*f %s",i==1?4:1,yp[0],unit[i].c_str()),2,2);
             }
         }
         delete [] x;
@@ -1652,7 +1652,7 @@ void __fastcall TPlot::DrawSnr(int level)
         if (!btn[i]->Down) continue;
         GraphG[i]->GetPos(p1,p2);
         p1.x+=5; p1.y+=3;
-        DrawLabel(GraphG[i],p1,s.sprintf("%s (%s)",label[i],unit[i]),1,2);
+        DrawLabel(GraphG[i],p1,s.sprintf("%s (%s)",label[i].c_str(),unit[i].c_str()),1,2);
     }
 }
 // draw snr, mp-elevation-plot ----------------------------------------------
