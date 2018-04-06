@@ -167,19 +167,19 @@ void __fastcall TGoogleEarthView::BtnRotRMouseUp(TObject *Sender, TMouseButton B
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleEarthView::Panel2Gesture(TObject *Sender,
-	const TGestureEventInfo &EventInfo, bool &Handled)
+    const TGestureEventInfo &EventInfo, bool &Handled)
 {
-	;
+    ;
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleEarthView::BtnOptClick(TObject *Sender)
 {
-	Panel8->Visible=!Panel8->Visible;
+    Panel8->Visible=!Panel8->Visible;
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleEarthView::FormResize(TObject *Sender)
 {
-	if (FixCent) SetCent(Lat,Lon);
+    if (FixCent) SetCent(Lat,Lon);
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleEarthView::Timer2Timer(TObject *Sender)
@@ -339,7 +339,7 @@ void __fastcall TGoogleEarthView::UpdatePoint(void)
     
     for (i=0;i<Plot->NWayPnt;i++) {
         ecef2pos(Plot->PntPos[i],pos);
-        ExecFunc(f.sprintf("AddPoint('%s',%.9f,%.9f,%.2f)",Plot->PntName[i],
+        ExecFunc(f.sprintf("AddPoint('%s',%.9f,%.9f,%.2f)",Plot->PntName[i].c_str(),
                  pos[0]*R2D,pos[1]*R2D,pos[2]));
     }
 }

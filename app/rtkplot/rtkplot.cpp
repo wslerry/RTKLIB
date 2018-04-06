@@ -67,7 +67,7 @@ USEFORM("mapdlg.cpp", MapAreaDialog);
 USEFORM("gmview.cpp", GoogleMapView);
 USEFORM("geview.cpp", GoogleEarthView);
 //---------------------------------------------------------------------------
-WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
 	try
 	{

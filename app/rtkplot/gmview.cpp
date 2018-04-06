@@ -19,9 +19,9 @@ TGoogleMapView *GoogleMapView;
 __fastcall TGoogleMapView::TGoogleMapView(TComponent* Owner)
     : TForm(Owner)
 {
-	State=0;
-	Lat=Lon=0.0;
-	Zoom=2;
+    State=0;
+    Lat=Lon=0.0;
+    Zoom=2;
     FixCent=1;
 }
 //---------------------------------------------------------------------------
@@ -44,16 +44,16 @@ void __fastcall TGoogleMapView::FormCreate(TObject *Sender)
 //---------------------------------------------------------------------------
 void __fastcall TGoogleMapView::Timer1Timer(TObject *Sender)
 {
-	if (!GetState()) return;
-	
-	State=1;
-	SetView(Lat,Lon,Zoom);
-	AddMark(0.0,0.0,"SOL1","SOLUTION 1");
-	AddMark(0.0,0.0,"SOL2","SOLUTION 2");
-	HideMark(1);
-	HideMark(2);
-	for (int i=0;i<2;i++) MarkPos[i][0]=MarkPos[i][1]=0.0;
-	Timer1->Enabled=false;
+    if (!GetState()) return;
+    
+    State=1;
+    SetView(Lat,Lon,Zoom);
+    AddMark(0.0,0.0,"SOL1","SOLUTION 1");
+    AddMark(0.0,0.0,"SOL2","SOLUTION 2");
+    HideMark(1);
+    HideMark(2);
+    for (int i=0;i<2;i++) MarkPos[i][0]=MarkPos[i][1]=0.0;
+    Timer1->Enabled=false;
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleMapView::BtnCloseClick(TObject *Sender)
@@ -63,31 +63,31 @@ void __fastcall TGoogleMapView::BtnCloseClick(TObject *Sender)
 //---------------------------------------------------------------------------
 void __fastcall TGoogleMapView::BtnShrinkClick(TObject *Sender)
 {
-	SetZoom(Zoom-1);
+    SetZoom(Zoom-1);
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleMapView::BtnExpandClick(TObject *Sender)
 {
-	SetZoom(Zoom+1);
+    SetZoom(Zoom+1);
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleMapView::BtnFixCentClick(TObject *Sender)
 {
     FixCent=BtnFixCent->Down;
-	if (FixCent) SetCent(Lat,Lon);
+    if (FixCent) SetCent(Lat,Lon);
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleMapView::FormResize(TObject *Sender)
 {
-	if (FixCent) SetCent(Lat,Lon);
+    if (FixCent) SetCent(Lat,Lon);
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleMapView::SetView(double lat, double lon, int zoom)
 {
     AnsiString f;
-	Lat=lat;
-	Lon=lon;
-	Zoom=zoom;
+    Lat=lat;
+    Lon=lon;
+    Zoom=zoom;
     ExecFunc(f.sprintf("SetView(%.9f,%.9f,%d)",lat,lon,zoom));
 }
 //---------------------------------------------------------------------------
@@ -103,7 +103,7 @@ void __fastcall TGoogleMapView::SetZoom(int zoom)
 {
     AnsiString f;
     if (zoom<2||zoom>21) return;
-	Zoom=zoom;
+    Zoom=zoom;
     ExecFunc(f.sprintf("SetZoom(%d)",zoom));
 }
 //---------------------------------------------------------------------------
@@ -116,54 +116,54 @@ void __fastcall TGoogleMapView::AddMark(double lat, double lon,
     AnsiString title, AnsiString msg)
 {
     AnsiString f;
-    ExecFunc(f.sprintf("AddMark(%.9f,%.9f,\"%s\",\"%s\")",lat,lon,title,msg));
+    ExecFunc(f.sprintf("AddMark(%.9f,%.9f,\"%s\",\"%s\")",lat,lon,title.c_str(),msg.c_str()));
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleMapView::SetMark(int index, const double *pos)
 {
     AnsiString f,title;
     title.sprintf("SOL%d",index);
-    ExecFunc(f.sprintf("PosMark(%.9f,%.9f,\"%s\")",pos[0]*R2D,pos[1]*R2D,title));
-	MarkPos[index-1][0]=pos[0]*R2D;
-	MarkPos[index-1][1]=pos[1]*R2D;
+    ExecFunc(f.sprintf("PosMark(%.9f,%.9f,\"%s\")",pos[0]*R2D,pos[1]*R2D,title.c_str()));
+    MarkPos[index-1][0]=pos[0]*R2D;
+    MarkPos[index-1][1]=pos[1]*R2D;
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleMapView::ShowMark(int index)
 {
     AnsiString f,title;
     title.sprintf("SOL%d",index);
-    ExecFunc(f.sprintf("ShowMark(\"%s\")",title));
+    ExecFunc(f.sprintf("ShowMark(\"%s\")",title.c_str()));
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleMapView::HideMark(int index)
 {
     AnsiString f,title;
     title.sprintf("SOL%d",index);
-    ExecFunc(f.sprintf("HideMark(\"%s\")",title));
+    ExecFunc(f.sprintf("HideMark(\"%s\")",title.c_str()));
 }
 //---------------------------------------------------------------------------
 int __fastcall TGoogleMapView::GetState(void)
 {
-	IHTMLDocument3 *doc=NULL;
-	IHTMLElement *ele1=NULL;
-	VARIANT var;
-	int state=0;
-	
-	if (!WebBrowser->Document) return 0;
-	WebBrowser->Document->QueryInterface(IID_IHTMLDocument3,(void **)&doc);
-	if (!doc) return 0;
-	doc->getElementById(L"state",&ele1);
-	doc->Release();
-	if (!ele1) return 0;
-	
-	VariantInit(&var);
-	if (ele1->getAttribute(L"value",0,&var)!=S_OK) {
-		VariantClear(&var);
-		return 0;
-	}
-	swscanf(var.bstrVal,L"%d",&state);
-	VariantClear(&var);
-	return state;
+    IHTMLDocument3 *doc=NULL;
+    IHTMLElement *ele1=NULL;
+    VARIANT var;
+    int state=0;
+    
+    if (!WebBrowser->Document) return 0;
+    WebBrowser->Document->QueryInterface(IID_IHTMLDocument3,(void **)&doc);
+    if (!doc) return 0;
+    doc->getElementById(L"state",&ele1);
+    doc->Release();
+    if (!ele1) return 0;
+    
+    VariantInit(&var);
+    if (ele1->getAttribute(L"value",0,&var)!=S_OK) {
+        VariantClear(&var);
+        return 0;
+    }
+    swscanf(var.bstrVal,L"%d",&state);
+    VariantClear(&var);
+    return state;
 }
 //---------------------------------------------------------------------------
 void __fastcall TGoogleMapView::ExecFunc(AnsiString func)
