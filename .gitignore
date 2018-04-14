@@ -9,3 +9,5 @@ Release
 Release_Build
 Debug_Build
 __history
+build/*
+lib/iers/gcc/iers.a
