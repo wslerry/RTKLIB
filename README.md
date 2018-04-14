@@ -4,15 +4,28 @@ This fork powers all the [Reach](https://emlid.com/reach/) units.
 
 We've added a couple of new features:
 
-* Added a new output - ERB protocol to use RTKLIB with APM autopilot
+* Added a new ERB output protocol to use RTKLIB with APM autopilot
 * Time mark support. UBX-TIM-TM2 messages are parsed and added as external events to the RINEX logs
-* Fixed NMEA GGA messages sent back to base to contain all valid information
+* Improved NMEA support
 
 And fixed some bugs, for which a big thanks goes to **RTKLIBexplorer** and his [excellent blog](https://rtklibexplorer.wordpress.com/).
 
-This fork contains work of [Alexey Bulatov](https://github.com/AlexeyBulatov) and [Egor Fedorov](https://github.com/egorf).
+This fork contains work by [Alexey Bulatov](https://github.com/AlexeyBulatov) and [Egor Fedorov](https://github.com/egorf), [Aleksey Proshutinskiy](https://github.com/justprosh).
 
 Thanks to all RTKLIB maintainers, who made all this possible.
+
+### Build instructions(for Linux)
+
+#### CLI apps
+
+* Make sure you have `gfortran` installed
+* `make`
+
+#### Qt apps
+
+* Make sure you have dev libs installed. For Ubuntu, run `sudo apt-get install qt5-default libqt5serialport5-dev`
+* Download the latest Linux deploy Qt [tool](https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage)
+* `make qt_appimages LINUX_DEPLOY_QT=path/to/linuxdeployqt`
 
 <pre>
 #
