@@ -27,6 +27,8 @@ Thanks to all RTKLIB maintainers, who made all this possible.
 * Download the latest Linux deploy Qt [tool](https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage)
 * `make qt_appimages LINUX_DEPLOY_QT=path/to/linuxdeployqt`
 
+### Original RTKLIB Readme at the time of the fork
+
 <pre>
 #
 #  RTKLIB 2.4.3 Betas
