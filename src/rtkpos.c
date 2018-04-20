@@ -66,6 +66,8 @@
 #define TTOL_MOVEB  (1.0+2*DTTOL)
                              /* time sync tolerance for moving-baseline (s) */
 
+#define RTK_BASE_POS_SHIFT_TO_RESET     1.0 /* reset phase bias states if base shifted (m) */
+
 /* number of parameters (pos,ionos,tropos,hw-bias,phase-bias,real,estimated) */
 #define NF(opt)     ((opt)->ionoopt==IONOOPT_IFLC?1:(opt)->nf)
 #define NP(opt)     ((opt)->dynamics==0?3:9)
@@ -1639,7 +1641,7 @@ static void holdamb(rtk_t *rtk, const double *xa)
         free(v); free(H);
         return;
     }
-    
+
     rtk->holdamb=1;  /* set flag to indicate hold has occurred */
     R=zeros(nv,nv);
     for (i=0;i<nv;i++) R[i+i*nv]=rtk->opt.varholdamb;
@@ -1839,7 +1841,7 @@ static int manage_amb_LAMBDA(rtk_t *rtk, double *bias, double *xa, const int *sa
     }
 
     /* skip first try if GLO fix-and-hold enabled and IC biases haven't been set yet */
-    if (rtk->opt.glomodear!=GLO_ARMODE_FIXHOLD || rtk->holdamb) {  
+    if (rtk->opt.glomodear!=GLO_ARMODE_FIXHOLD || rtk->holdamb) {
         /* for inital ambiguity resolution attempt, include all enabled sats 
                 bias and xa are fixed solution outputs and are only updated if the ambiguities are resolved */
         gps1=1;    /* always enable gps for initial pass */
@@ -2318,6 +2320,20 @@ extern rtk_t *rtk_init(const prcopt_t *opt)
     return rtk;
 }
 
+static void rtk_reset_phase_bias_states(rtk_t *rtk)
+{
+    int sat, freq;
+
+    assert( rtk_is_valid(rtk) );
+
+    for (sat = 0; sat < MAXSAT; sat++) {
+      for (freq = 0; freq < rtk->opt.nf; freq++) {
+
+          initx(rtk, 0.0, 0.0, IB(sat+1, freq, &rtk->opt));
+      }
+    }
+}
+
 /*
  * general type of estimator for RTK positioning
  *  args:  rtk      IO      gnss solution structure
@@ -2488,7 +2504,10 @@ extern void rtkinit(rtk_t *rtk, const prcopt_t *opt)
     trace(3,"rtkinit :\n");
     
     rtk->sol=sol0;
-    for (i=0;i<6;i++) rtk->rb[i]=0.0;
+    for (i=0;i<6;i++) {
+      rtk->rb[i]=0.0;
+      rtk->rb_prev[i]=0.0;
+    }
     rtk->nx=opt->mode<=PMODE_FIXED?NX(opt):pppnx(opt);
     rtk->na=opt->mode<=PMODE_FIXED?NR(opt):pppnx(opt);
     rtk->tt=0.0;
@@ -2615,16 +2634,31 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     char msg[128]="";
     int sat, freq;
     int residual_maxiter = opt->residual_maxiter;
+    double delta_base_pos[3];
 
     trace(3,"rtkpos  : time=%s n=%d\n",time_str(obs[0].time,3),n);
     trace(4,"obs=\n"); traceobs(4,obs,n);
-    /*trace(5,"nav=\n"); tracenav(5,nav);*/
-    
+
     /* set base station position */
     if (opt->refpos<=POSOPT_RINEX&&opt->mode!=PMODE_SINGLE&&
         opt->mode!=PMODE_MOVEB) {
         for (i=0;i<6;i++) rtk->rb[i]=i<3?opt->rb[i]:0.0;
     }
+
+    /* check base position shift */
+    if ( (opt->refpos != PMODE_MOVEB) && (norm(rtk->rb_prev, 3) > 1E-6) ) {
+
+        for (i = 0; i < 3; i++) {
+
+            delta_base_pos[i] = rtk->rb[i] - rtk->rb_prev[i];
+        }
+
+        if ( norm(delta_base_pos, 3) > RTK_BASE_POS_SHIFT_TO_RESET ) {
+
+            rtk_reset_phase_bias_states(rtk);
+        }
+    }
+
     /* count rover/base station observations */
     for (nu=0;nu   <n&&obs[nu   ].rcv==1;nu++);
     for (nr=0;nu+nr<n&&obs[nu+nr].rcv==2;nr++);
@@ -2739,6 +2773,8 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     }
 
     outsolstat(rtk, nav);
+
+    memcpy(rtk->rb_prev, rtk->rb, 6 * sizeof(double));
 
     if ( rtk->opt.glomodear == GLO_ARMODE_ON ) {
 

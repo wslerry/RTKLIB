@@ -1299,6 +1299,7 @@ typedef struct {        /* ambiguity control type */
 typedef struct {        /* RTK control/result type */
     sol_t  sol;         /* RTK solution */
     double rb[6];       /* base position/velocity (ecef) (m|m/s) */
+    double rb_prev[6];  /* previous base position/velocity (ecef) (m|m/s) */
     int nx,na;          /* number of float states/fixed states */
     double tt;          /* time difference between current and previous (s) */
     double *x, *P;      /* float states and their covariance */
