@@ -2656,6 +2656,11 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
         if ( norm(delta_base_pos, 3) > RTK_BASE_POS_SHIFT_TO_RESET ) {
 
             rtk_reset_phase_bias_states(rtk);
+
+            if ( opt->glomodear == GLO_ARMODE_ON ) {
+
+                ((glo_IFB_t *) rtk->glo_IFB)->signal_to_reset = GLO_IFB_SIGNAL_TO_RESET;
+            }
         }
     }
 
