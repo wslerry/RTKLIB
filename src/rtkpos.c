@@ -42,6 +42,7 @@
 *-----------------------------------------------------------------------------*/
 #include <stdarg.h>
 #include "rtklib.h"
+#include "glonass_IFB_correction.h"
 
 
 /* constants/macros ----------------------------------------------------------*/
@@ -104,6 +105,11 @@ static int statlevel=0;          /* rtk status output level (0:off) */
 static FILE *fp_stat=NULL;       /* rtk status file pointer */
 static char file_stat[1024]="";  /* rtk status file original path */
 static gtime_t time_stat={0};    /* rtk status file time */
+
+static int calc_glonass_frequency_number_via_wavelength(double lam_L1)
+{
+  return ROUND(((CLIGHT / lam_L1) - FREQ1_GLO) / DFRQ1_GLO);
+}
 
 /* open solution status file ---------------------------------------------------
 * open solution status file and set output level
@@ -879,9 +885,23 @@ static void udstate(rtk_t *rtk, const obsd_t *obs, const int *sat,
                     const int *iu, const int *ir, int ns, const nav_t *nav)
 {
     double tt=fabs(rtk->tt),bl,dr[3];
+    int i, idx, sat_no;
+    glo_IFB_t *glo_IFB = (glo_IFB_t *) rtk->glo_IFB;
     
     trace(3,"udstate : ns=%d\n",ns);
-    
+
+    if ( rtk->opt.glomodear == GLO_ARMODE_ON ) {
+
+      for (i = 0; i < NSATGLO; i++) {  /* correct state vector */
+
+        sat_no = NSATGPS + i + 1;
+        idx = IB(sat_no, 0, (&rtk->opt));
+        if (rtk->x[idx] == 0) continue;
+
+        rtk->x[idx] -= rtk->ssat[sat_no-1].freq_num * glo_IFB->delta_glo_dt;
+      }
+    }
+
     /* temporal update of position/velocity/acceleration */
     udpos(rtk,tt);
     
@@ -904,16 +924,17 @@ static void udstate(rtk_t *rtk, const obsd_t *obs, const int *sat,
     }
 }
 /* undifferenced phase/code residual for satellite ---------------------------*/
-static void zdres_sat(int base, double r, const obsd_t *obs, 
-                      const smoothing_data_t *smoothing_data, const nav_t *nav, 
-                      const double *azel, const double *dant, const prcopt_t *opt, 
+static void zdres_sat(int base, double r, const obsd_t *obs, const nav_t *nav,
+                      const rtk_t *rtk, const double *azel, const double *dant,
                       double *y) {
     int sat = obs->sat - 1;
     int rcv = obs->rcv - 1;
+    const prcopt_t *opt = &rtk->opt;
     const double *lam = nav->lam[sat];
     double f1, f2, C1, C2, dant_if; 
     double P, P1, P2;
     int i, nf = NF(opt);
+    const glo_IFB_t *glo_IFB = (const glo_IFB_t *) rtk->glo_IFB;
 
     if (opt->ionoopt == IONOOPT_IFLC) { /* iono-free linear combination */
         if (lam[0] == 0.0 || lam[1] == 0.0) return;
@@ -931,9 +952,9 @@ static void zdres_sat(int base, double r, const obsd_t *obs,
             y[0] = C1 * obs->L[0] * lam[0] + C2 * obs->L[1] * lam[1] - r - dant_if;
         }
 
-        if ( (opt->smoothing_mode) && smoothing_data ) {
-            P1 = smoothing_data->P_smooth[rcv][sat][0];
-            P2 = smoothing_data->P_smooth[rcv][sat][1];
+        if ( (opt->smoothing_mode) && rtk->smoothing_data ) {
+            P1 = rtk->smoothing_data->P_smooth[rcv][sat][0];
+            P2 = rtk->smoothing_data->P_smooth[rcv][sat][1];
         }
         else {
             P1 = obs->P[0];
@@ -953,10 +974,19 @@ static void zdres_sat(int base, double r, const obsd_t *obs,
                 continue;
             }
             /* residuals = observable - estimated range */
-            if (obs->L[i] != 0.0) y[i] = obs->L[i] * lam[i] - r - dant[i];
-            
-            if ( (opt->smoothing_mode) && smoothing_data ) 
-                P = smoothing_data->P_smooth[rcv][sat][i];
+            if (obs->L[i] != 0.0) {
+
+              y[i] = obs->L[i] * lam[i] - r - dant[i];
+
+              if ( (opt->glomodear == GLO_ARMODE_ON)
+                && (rtk->ssat[sat].sys == SYS_GLO) && (base == 0) ) {
+
+                y[i] -= rtk->ssat[sat].freq_num * (glo_IFB->glo_dt) * (CLIGHT / FREQ1_GLO);
+              }
+            }
+
+            if ( (opt->smoothing_mode) && rtk->smoothing_data )
+                P = rtk->smoothing_data->P_smooth[rcv][sat][i];
             else                                           
                 P = obs->P[i];
             
@@ -980,13 +1010,14 @@ static void zdres_sat(int base, double r, const obsd_t *obs,
         O   y[(0:1)+i*2] = zero diff residuals {phase,code} (m)
         O   e    = line of sight unit vectors to sats
         O   azel = [az, el] to sats                                           */
-static int zdres(int base, const obsd_t *obs, const smoothing_data_t *smoothing_data, 
-                 int n, const double *rs, const double *dts, const int *svh, 
-                 const nav_t *nav, const double *rr, const prcopt_t *opt, 
+static int zdres(int base, const obsd_t *obs, const rtk_t *rtk,
+                 int n, const double *rs, const double *dts,
+                 const int *svh, const nav_t *nav, const double *rr,
                  int index, double *y, double *e, double *azel)
 {
     double r,rr_[3],pos[3],dant[NFREQ]={0},disp[3];
     double zhd,zazel[]={0.0,90.0*D2R};
+    const prcopt_t *opt = &rtk->opt;
     int i,nf=NF(opt);
     
     trace(3,"zdres   : n=%d\n",n);
@@ -1029,7 +1060,7 @@ static int zdres(int base, const obsd_t *obs, const smoothing_data_t *smoothing_
                  dant);
         
         /* calc undifferenced phase/code residual for satellite */
-        zdres_sat(base,r,obs+i,smoothing_data,nav,azel+i*2,dant,opt,y+i*nf*2);
+        zdres_sat(base,r,obs+i,nav,rtk,azel+i*2,dant,y+i*nf*2);
     }
     trace(4,"rr_=%.3f %.3f %.3f\n",rr_[0],rr_[1],rr_[2]);
     trace(4,"pos=%.9f %.9f %.3f\n",pos[0]*R2D,pos[1]*R2D,pos[2]);
@@ -1189,7 +1220,7 @@ static int ddres(rtk_t *rtk, const nav_t *nav, const obsd_t *obs, double dt, con
                  double *H, double *R, int *vflg)
 {
     prcopt_t *opt=&rtk->opt;
-    smoothing_data_t *smoothing_data = &rtk->smoothing_data;
+    smoothing_data_t *smoothing_data = rtk->smoothing_data;
     double bl,dr[3],posu[3],posr[3],didxi=0.0,didxj=0.0,*im,icb;
     double *tropr,*tropu,*dtdxr,*dtdxu,*Ri,*Rj,lami,lamj,fi,fj,df,*Hi=NULL;
     int i,j,k,m,f,ff,nv=0,nb[NFREQ*4*2+2]={0},b=0,sysi,sysj,nf=NF(opt);
@@ -1449,7 +1480,7 @@ static double intpres(gtime_t time, const obsd_t *obs, int n, const nav_t *nav,
     
     satposs(time,obsb,nb,nav,opt->sateph,rs,dts,var,svh);
     
-    if (!zdres(1,obsb,&rtk->smoothing_data,nb,rs,dts,svh,nav,rtk->rb,opt,1,yb,e,azel)) {
+    if (!zdres(1,obsb,rtk,nb,rs,dts,svh,nav,rtk->rb,1,yb,e,azel)) {
         return tt;
     }
     for (i=0;i<n;i++) {
@@ -1470,8 +1501,11 @@ static int ddmat(rtk_t *rtk, double *D,int gps,int glo,int sbs)
     trace(3,"ddmat: gps=%d/%d glo=%d/%d sbs=%d\n",gps,rtk->opt.gpsmodear,glo,rtk->opt.glomodear,sbs);
     
     /* clear fix flag for all sats (1=float, 2=fix) */
-    for (i=0;i<MAXSAT;i++) for (j=0;j<NFREQ;j++) {
+    for (i=0;i<MAXSAT;i++) {
+      for (j=0;j<NFREQ;j++) {
         rtk->ssat[i].fix[j]=0;
+      }
+      rtk->ssat[i].is_reference = 0;
     }
     /* set diaganol elements for all non sat phase-bias states */
     for (i=0;i<na;i++) D[i+i*nx]=1.0;
@@ -1500,6 +1534,7 @@ static int ddmat(rtk_t *rtk, double *D,int gps,int glo,int sbs)
                 if (rtk->ssat[i-k].lock[f]>=0&&!(rtk->ssat[i-k].slip[f]&2)&&
                     rtk->ssat[i-k].azel[1]>=rtk->opt.elmaskar&&!nofix&&(!rtk->ssat[i-k].no_fix[f])) {
                     rtk->ssat[i-k].fix[f]=2; /* fix */
+                    rtk->ssat[i-k].is_reference = 1;
                     break;/* break out of loop if find good sat */
                 }
                 /* else don't use this sat for fixing ambiguity */
@@ -1985,7 +2020,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     /* calculate [range - measured pseudorange] for base station (phase and code)
          output is in y[nu:nu+nr], see call for rover below for more details       */
     trace(3,"base station:\n");
-    if (!zdres(1,obs+nu,&rtk->smoothing_data,nr,rs+nu*6,dts+nu*2,svh+nu,nav,rtk->rb,opt,1,
+    if (!zdres(1,obs+nu,rtk,nr,rs+nu*6,dts+nu*2,svh+nu,nav,rtk->rb,1,
                y+nu*nf*2,e+nu*3,azel+nu*2)) {
         errmsg(rtk,"initial base station position error\n");
         
@@ -2033,7 +2068,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
                 e    = line of sight unit vectors to sats
                 azel = [az, el] to sats                                   */
         trace(3,"rover:\n");
-        if (!zdres(0,obs,&rtk->smoothing_data,nu,rs,dts,svh,nav,xp,opt,0,y,e,azel)) {
+        if (!zdres(0,obs,rtk,nu,rs,dts,svh,nav,xp,0,y,e,azel)) {
             errmsg(rtk,"rover initial position error\n");
             stat=SOLQ_NONE;
             break;
@@ -2068,7 +2103,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
         trace(4,"x(%d)=",i+1); tracemat(4,xp,1,NR(opt),13,4);
     }
     /* calc zero diff residuals again after kalman filter update */
-    if (stat!=SOLQ_NONE&&zdres(0,obs,&rtk->smoothing_data,nu,rs,dts,svh,nav,xp,opt,0,y,e,azel)) {
+    if (stat!=SOLQ_NONE&&zdres(0,obs,rtk,nu,rs,dts,svh,nav,xp,0,y,e,azel)) {
         
         /* calc double diff residuals again after kalman filter update for float solution */
         nv=ddres(rtk,nav,obs,dt,xp,Pp,sat,y,e,azel,iu,ir,ns,v,NULL,R,vflg);
@@ -2115,7 +2150,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
         if (manage_amb_LAMBDA(rtk,bias,xa,sat,nf,ns)>1) {
     
             /* find zero-diff residuals for fixed solution */
-            if (zdres(0,obs,&rtk->smoothing_data,nu,rs,dts,svh,nav,xa,opt,0,y,e,azel)) {
+            if (zdres(0,obs,rtk,nu,rs,dts,svh,nav,xa,0,y,e,azel)) {
                 
                 /* post-fit residuals for fixed solution (xa includes fixed phase biases, rtk->xa does not) */
                 nv=ddres(rtk,nav,obs,dt,xa,NULL,sat,y,e,azel,iu,ir,ns,v,NULL,R,vflg);
@@ -2193,13 +2228,22 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
 }
 
 /* ------------------------------------------------------------------------------ */
+/* rtk API functions */
 
-static int rtk_is_valid(const rtk_t *rtk)
+extern int rtk_is_valid(const rtk_t *rtk)
 {
     if ( !rtk ) return 0;
     if ( (!rtk->x) || (!rtk->xa) ) return 0;
     if ( (!rtk->P) || (!rtk->Pa) ) return 0;
-    
+
+    if ( rtk->glo_IFB != NULL ) {
+
+      if ( !glo_IFB_is_valid((glo_IFB_t *) rtk->glo_IFB) ) {
+
+        return 0;
+      }
+    }
+
     return 1;
 }
 
@@ -2207,56 +2251,70 @@ static void rtk_copy_states(const rtk_t *rtk_source, rtk_t *rtk_destination)
 {
     assert( rtk_source != NULL );
     assert( rtk_destination != NULL );
-    
+
     memcpy(rtk_destination->x, rtk_source->x, rtk_source->nx * sizeof(double));
     memcpy(rtk_destination->P, rtk_source->P, SQR(rtk_source->nx) * sizeof(double));
     memcpy(rtk_destination->xa, rtk_source->xa, rtk_source->na * sizeof(double));
     memcpy(rtk_destination->Pa, rtk_source->Pa, SQR(rtk_source->na) * sizeof(double));
 }
 
-static void rtk_copy(const rtk_t *rtk_source, rtk_t *rtk_destination)
+extern void rtk_copy(const rtk_t *rtk_source, rtk_t *rtk_destination)
 {
     double *x, *P;
     double *xa, *Pa;
-    
+    void   *glo_IFB;
+
     assert( rtk_is_valid(rtk_source) );
     assert( rtk_is_valid(rtk_destination) );
-    
+
     /* tmp copy of rtk_destination pointer fields */
     x  = rtk_destination->x;
     P  = rtk_destination->P;
     xa = rtk_destination->xa;
     Pa = rtk_destination->Pa;
-    
+    glo_IFB = rtk_destination->glo_IFB;
+
     /* field-to-field copy */
     *rtk_destination = *rtk_source;
-    
+
     /* restore pointers */
     rtk_destination->x  = x;
     rtk_destination->P  = P;
     rtk_destination->xa = xa;
     rtk_destination->Pa = Pa;
-    
+    rtk_destination->glo_IFB = glo_IFB;
+
     /* deep copy */
     rtk_copy_states(rtk_source, rtk_destination);
+
+    if ( (rtk_source->glo_IFB != NULL) && (rtk_destination->glo_IFB != NULL) ) {
+
+      glo_IFB_copy((glo_IFB_t *) rtk_source->glo_IFB, (glo_IFB_t *) rtk_destination->glo_IFB);
+    }
 }
 
-static void rtk_free(rtk_t *rtk)
+extern void rtk_free(rtk_t *rtk)
 {
     rtkfree(rtk);
     free(rtk);
 }
 
-static rtk_t *rtk_init(prcopt_t *opt)
+extern rtk_t *rtk_init(const prcopt_t *opt)
 {
     rtk_t *rtk = malloc(sizeof(rtk_t));
-    if ( !rtk ) return NULL;
-    rtkinit(rtk, opt);
-    if ( !rtk_is_valid(rtk) ) { 
-        rtk_free(rtk); 
-        return NULL;
+    if ( !rtk ) {
+
+      return NULL;
     }
-    
+
+    rtkinit(rtk, opt);
+
+    if ( !rtk_is_valid(rtk) ) { 
+
+      rtk_free(rtk);
+      return NULL;
+    }
+
     return rtk;
 }
 
@@ -2424,7 +2482,7 @@ extern void rtkinit(rtk_t *rtk, const prcopt_t *opt)
     sol_t sol0={{0}};
     ambc_t ambc0={{{0}}};
     ssat_t ssat0={0};
-    int i, j, k;
+    int i;
     int sat, freq;
     
     trace(3,"rtkinit :\n");
@@ -2448,23 +2506,25 @@ extern void rtkinit(rtk_t *rtk, const prcopt_t *opt)
     for (i=0;i<MAXERRMSG;i++) rtk->errbuf[i]=0;
     rtk->opt=*opt;
     rtk->initial_mode=rtk->opt.mode;
-    for (i = 0; i < MAXRCV_SMOOTH; i++)
-        for (j = 0; j < MAXSAT; j++)
-            for (k = 0; k < MAXFREQ; k++) {
-                rtk->smoothing_data.P_smooth [i][j][k] = 0.0;
-                rtk->smoothing_data.L        [i][j][k] = 0.0;
-                rtk->smoothing_data.D        [i][j][k] = 0.0;
-                rtk->smoothing_data.count    [i][j][k] = 0;
-                rtk->smoothing_data.direction[i][j][k] = 1;
-                rtk->smoothing_data.slip     [i][j][k] = 0;
-            }
-            
+
+    rtk->smoothing_data = NULL;
+
     for (sat = 0; sat < MAXSAT; sat++) {
         for (freq = 0; freq < rtk->opt.nf; freq++) {
             rtk->ssat[sat].to_reset[freq] = 0;
             rtk->ssat[sat].no_fix[freq]   = 0;
         }
     }
+
+
+  if ( opt->glomodear == GLO_ARMODE_ON ) {
+
+    rtk->glo_IFB = glo_IFB_init();
+  }
+  else {
+
+    rtk->glo_IFB = NULL;
+  }
 }
 /* free rtk control ------------------------------------------------------------
 * free memory for rtk control struct
@@ -2474,12 +2534,18 @@ extern void rtkinit(rtk_t *rtk, const prcopt_t *opt)
 extern void rtkfree(rtk_t *rtk)
 {
     trace(3,"rtkfree :\n");
-    
+
     rtk->nx=rtk->na=0;
     free(rtk->x ); rtk->x =NULL;
     free(rtk->P ); rtk->P =NULL;
     free(rtk->xa); rtk->xa=NULL;
     free(rtk->Pa); rtk->Pa=NULL;
+
+    if ( rtk->glo_IFB != NULL ) {
+
+        glo_IFB_free((glo_IFB_t *) rtk->glo_IFB);
+        rtk->glo_IFB = NULL;
+    }
 }
 /* precise positioning ---------------------------------------------------------
 * input observation data and navigation message, compute rover position by 
@@ -2574,9 +2640,18 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
             }
         }
     }
+
+    /* calc glonass frequency numbers */
+    for (sat = 0; sat < MAXSAT; sat++) {
+
+      if ( rtk->ssat[sat].sys != SYS_GLO ) continue;
+      if ( nav->lam[sat][0] == 0.0 )       continue;
+
+      rtk->ssat[sat].freq_num = calc_glonass_frequency_number_via_wavelength(nav->lam[sat][0]);
+    }
     
     /* rover position by single point positioning */
-    if (!pntpos(obs,nu,nav,&rtk->smoothing_data,&rtk->opt,&rtk->sol,NULL,rtk->ssat,msg)) {
+    if (!pntpos(obs,nu,nav,rtk->smoothing_data,&rtk->opt,&rtk->sol,NULL,rtk->ssat,msg)) {
         errmsg(rtk,"point pos error (%s)\n",msg);
         
         if (!rtk->opt.dynamics) {
@@ -2621,7 +2696,7 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     if (opt->mode==PMODE_MOVEB) { /*  moving baseline */
         
         /* estimate position/velocity of base station */
-        if (!pntpos(obs+nu,nr,nav,&rtk->smoothing_data,&rtk->opt,&solb,NULL,NULL,msg)) {
+        if (!pntpos(obs+nu,nr,nav,rtk->smoothing_data,&rtk->opt,&solb,NULL,NULL,msg)) {
             errmsg(rtk,"base station position error (%s)\n",msg);
             return 0;
         }
@@ -2662,8 +2737,13 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     else {
         rtk_estimate_standard(rtk, obs, n, nav);
     }
-    
+
     outsolstat(rtk, nav);
-    
+
+    if ( rtk->opt.glomodear == GLO_ARMODE_ON ) {
+
+      glo_IFB_process((glo_IFB_t *) rtk->glo_IFB, rtk);
+    }
+
     return 1;
 }

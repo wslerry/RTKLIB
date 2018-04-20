@@ -1283,6 +1283,8 @@ typedef struct {        /* satellite status type */
     double  phw;        /* phase windup (cycle) */
     gtime_t pt[2][NFREQ]; /* previous carrier-phase time */
     double  ph[2][NFREQ]; /* previous carrier-phase observable (cycle) */
+    int     freq_num;     /* frequency number (for FDMA) */
+    int     is_reference; /* flag indicating that satellite is used in double-differencing as the reference */
 } ssat_t;
 
 typedef struct {        /* ambiguity control type */
@@ -1311,7 +1313,8 @@ typedef struct {        /* RTK control/result type */
     char errbuf[MAXERRMSG]; /* error message buffer */
     prcopt_t opt;       /* processing options */
     int initial_mode;   /* initial positioning mode */
-    smoothing_data_t smoothing_data; /* data related to smoothing of code */
+    smoothing_data_t *smoothing_data; /* data related to smoothing of code */
+    void *glo_IFB;      /* glonass IFB corrector */
 } rtk_t;
 
 typedef struct half_cyc_tag {  /* half-cycle correction list type */
@@ -1934,6 +1937,11 @@ EXPORT int  rtkpos (rtk_t *rtk, const obsd_t *obs, int nobs, const nav_t *nav);
 EXPORT int  rtkopenstat(const char *file, int level);
 EXPORT void rtkclosestat(void);
 EXPORT int  rtkoutstat(rtk_t *rtk, char *buff);
+
+EXPORT rtk_t *rtk_init(const prcopt_t *opt);
+EXPORT void   rtk_free(rtk_t *rtk);
+EXPORT int    rtk_is_valid(const rtk_t *rtk);
+EXPORT void   rtk_copy(const rtk_t *rtk_source, rtk_t *rtk_destination);
 
 /* precise point positioning -------------------------------------------------*/
 EXPORT void pppos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav);

@@ -577,6 +577,15 @@ static obs_t* obs_init()
     return obs;
 }
 
+static int obs_is_valid(const obs_t *obs)
+{
+    if ( !obs ) return 0;
+    if ( (obs->n < 0) || (obs->n > MAXOBS) ) return 0;
+    if ( !obs->data ) return 0;
+
+    return 1;
+}
+
 static void obs_free(obs_t *obs)
 {
     assert( obs_is_valid(obs) );
@@ -728,6 +737,27 @@ static obs_queue_t *obs_queue_init()
     return obs_queue;
 }
 
+static int obs_queue_is_valid(obs_queue_t *obs_queue)
+{
+    int i;
+    int offsets_check[MAXOBSQUEUE] = {0};
+
+    if ( !obs_queue ) return 0;
+    if ( (obs_queue->length < 0) || (obs_queue->length > MAXOBSQUEUE) ) return 0;
+
+    for (i = 0; i < MAXOBSQUEUE; i++) {
+        if ( !obs_queue->obs[i] ) return 0;
+        if ( (obs_queue->offset[i] < 0) || (obs_queue->offset[i] >= MAXOBSQUEUE) ) return 0;
+        offsets_check[obs_queue->offset[i]] = 1;
+    }
+
+    for (i = 0; i < MAXOBSQUEUE; i++) {
+       if ( !offsets_check[i] ) return 0;
+    }
+
+    return 1;
+}
+
 static void obs_queue_free(obs_queue_t *obs_queue)
 {
     int i;
@@ -738,6 +768,21 @@ static void obs_queue_free(obs_queue_t *obs_queue)
     }
     
     free(obs_queue);
+}
+
+static int obs_queue_is_index_valid(const obs_queue_t *obs_queue, int index)
+{
+    int is_index_in_bounds;
+    int offset, is_offset_in_bounds;
+
+    is_index_in_bounds = (index >= 0) && (index < MAXOBSQUEUE) && (index < obs_queue->length);
+    if ( !is_index_in_bounds ) return 0;
+
+    offset = obs_queue->offset[index];
+    is_offset_in_bounds = (offset >= 0) && (offset < MAXOBSQUEUE);
+    if ( !is_offset_in_bounds ) return 0;
+
+    return 1;
 }
 
 /* cut first index_cut elements from the queue */
