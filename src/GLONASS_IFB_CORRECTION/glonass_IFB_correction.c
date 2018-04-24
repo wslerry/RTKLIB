@@ -9,13 +9,13 @@
 /* -------------------------------------------------------------------------------------------------------------- */
 /* API */
 
-extern glo_IFB_t *glo_IFB_init()
+extern void *glo_IFB_init()
 {
   glo_IFB_t *glo_IFB = malloc(sizeof(glo_IFB_t));
 
   if ( glo_IFB == NULL ) {
 
-    return 0;
+    return NULL;
   }
 
   glo_IFB->mode             = GLO_IFB_SEARCH_MODE;
@@ -26,24 +26,26 @@ extern glo_IFB_t *glo_IFB_init()
   glo_IFB->delta_glo_dt     = 0.0;
   glo_IFB->signal_to_reset  = 0;
 
-  return glo_IFB;
+  return (void *) glo_IFB;
 }
 
-extern int glo_IFB_is_valid(const glo_IFB_t *glo_IFB)
+extern int glo_IFB_is_valid(const void *glo_IFB)
 {
-  if ( glo_IFB == NULL ) {
+  glo_IFB_t *glo_IFB_casted = (glo_IFB_t *) glo_IFB;
+
+  if ( glo_IFB_casted == NULL ) {
 
     return 0;
   }
 
-  if ( glo_IFB->adjustment_count < 0
-    || glo_IFB->adjustment_count > GLO_IFB_MAX_ADJUSTMENT_COUNT ) {
+  if ( glo_IFB_casted->adjustment_count < 0
+    || glo_IFB_casted->adjustment_count > GLO_IFB_MAX_ADJUSTMENT_COUNT ) {
 
     return 0;
   }
 
-  if ( glo_IFB->fix_outage < 0
-    || glo_IFB->fix_outage > GLO_IFB_MAX_FIX_OUTAGE ) {
+  if ( glo_IFB_casted->fix_outage < 0
+    || glo_IFB_casted->fix_outage > GLO_IFB_MAX_FIX_OUTAGE ) {
 
     return 0;
   }
@@ -51,33 +53,23 @@ extern int glo_IFB_is_valid(const glo_IFB_t *glo_IFB)
   return 1;
 }
 
-extern void glo_IFB_free(glo_IFB_t *glo_IFB)
+extern void glo_IFB_free(void *glo_IFB)
 {
   assert( glo_IFB_is_valid(glo_IFB) );
 
   free(glo_IFB);
 }
 
-extern void glo_IFB_copy(const glo_IFB_t *glo_IFB_source, glo_IFB_t *glo_IFB_destination)
+extern void glo_IFB_copy(const void *glo_IFB_src, void *glo_IFB_dst)
 {
-  assert( glo_IFB_is_valid(glo_IFB_source) );
-  assert( glo_IFB_is_valid(glo_IFB_destination) );
+  glo_IFB_t *glo_IFB_src_casted = (glo_IFB_t *) glo_IFB_src;
+  glo_IFB_t *glo_IFB_dst_casted = (glo_IFB_t *) glo_IFB_dst;
+
+  assert( glo_IFB_is_valid(glo_IFB_src) );
+  assert( glo_IFB_is_valid(glo_IFB_dst) );
 
   /* field-to-field copy */
-  *glo_IFB_destination = *glo_IFB_source;
-}
-
-extern void glo_IFB_reset(glo_IFB_t *glo_IFB)
-{
-  assert( glo_IFB_is_valid(glo_IFB) );
-
-  glo_IFB->mode             = GLO_IFB_SEARCH_MODE;
-  glo_IFB->adjustment_count = 0;
-  glo_IFB->fix_outage       = 0;
-  glo_IFB->glo_dt           = 0.0;
-  glo_IFB->glo_dt_initial   = 0.0;
-  glo_IFB->delta_glo_dt     = 0.0;
-  glo_IFB->signal_to_reset  = 0;
+  *glo_IFB_dst_casted = *glo_IFB_src_casted;
 }
 
 extern int glo_IFB_is_enough_sats(const rtk_t *rtk)
@@ -108,6 +100,33 @@ extern int glo_IFB_is_enough_sats(const rtk_t *rtk)
   }
 
   return 1;
+}
+
+extern double glo_IFB_get_glo_dt(const void *glo_IFB)
+{
+  glo_IFB_t *glo_IFB_casted = (glo_IFB_t *) glo_IFB;
+
+  assert( glo_IFB_is_valid(glo_IFB) );
+
+  return glo_IFB_casted->glo_dt;
+}
+
+extern double glo_IFB_get_delta_glo_dt(const void *glo_IFB)
+{
+  glo_IFB_t *glo_IFB_casted = (glo_IFB_t *) glo_IFB;
+
+  assert( glo_IFB_is_valid(glo_IFB) );
+
+  return glo_IFB_casted->delta_glo_dt;
+}
+
+extern void glo_IFB_send_signal_to_reset(void *glo_IFB)
+{
+  glo_IFB_t *glo_IFB_casted = (glo_IFB_t *) glo_IFB;
+
+  assert( glo_IFB_is_valid(glo_IFB) );
+
+  glo_IFB_casted->signal_to_reset = GLO_IFB_SIGNAL_TO_RESET;
 }
 
 /* -------------------------------------------------------------------------------------------------------------- */
@@ -314,41 +333,55 @@ static int check_reset_condition(const glo_IFB_t *glo_IFB, const rtk_t *rtk)
   return 0;
 }
 
+static void glo_IFB_reset(glo_IFB_t *glo_IFB)
+{
+  assert( glo_IFB_is_valid(glo_IFB) );
+
+  glo_IFB->mode             = GLO_IFB_SEARCH_MODE;
+  glo_IFB->adjustment_count = 0;
+  glo_IFB->fix_outage       = 0;
+  glo_IFB->glo_dt           = 0.0;
+  glo_IFB->glo_dt_initial   = 0.0;
+  glo_IFB->delta_glo_dt     = 0.0;
+  glo_IFB->signal_to_reset  = 0;
+}
+
 /* -------------------------------------------------------------------------------------------------------------- */
 /* the main function */
 
-extern void glo_IFB_process(glo_IFB_t *glo_IFB, rtk_t *rtk)
+extern void glo_IFB_process(void *glo_IFB, rtk_t *rtk)
 {
+  glo_IFB_t *glo_IFB_casted = (glo_IFB_t *) glo_IFB;
   double glo_dt_prev;
 
   assert( glo_IFB_is_valid(glo_IFB) );
   assert( rtk_is_valid(rtk) );
 
-  glo_dt_prev = glo_IFB->glo_dt;
+  glo_dt_prev = glo_IFB_casted->glo_dt;
 
   /* update fix_outage field */
-  if ( rtk->sol.stat == SOLQ_FLOAT ) glo_IFB->fix_outage++;
-  if ( rtk->sol.stat == SOLQ_FIX )   glo_IFB->fix_outage = 0;
-  if ( glo_IFB->fix_outage > GLO_IFB_MAX_FIX_OUTAGE ) glo_IFB->fix_outage = GLO_IFB_MAX_FIX_OUTAGE;
+  if ( rtk->sol.stat == SOLQ_FLOAT ) glo_IFB_casted->fix_outage++;
+  if ( rtk->sol.stat == SOLQ_FIX )   glo_IFB_casted->fix_outage = 0;
+  if ( glo_IFB_casted->fix_outage > GLO_IFB_MAX_FIX_OUTAGE ) glo_IFB_casted->fix_outage = GLO_IFB_MAX_FIX_OUTAGE;
 
   /* check mode transition conditions and switch if it necessary */
-  switch ( glo_IFB->mode ) {
+  switch ( glo_IFB_casted->mode ) {
 
     case GLO_IFB_SEARCH_MODE:
-      if ( check_search_to_adjustment_switch_condition(glo_IFB, rtk) ) {
+      if ( check_search_to_adjustment_switch_condition(glo_IFB_casted, rtk) ) {
 
-        switch_search_to_adjustment_mode(glo_IFB);
+        switch_search_to_adjustment_mode(glo_IFB_casted);
       }
       break;
 
     case GLO_IFB_ADJUSTMENT_MODE:
-      if ( check_adjustment_to_search_switch_condition(glo_IFB, rtk) ) {
+      if ( check_adjustment_to_search_switch_condition(glo_IFB_casted, rtk) ) {
 
-        switch_adjustment_to_search_mode(glo_IFB);
+        switch_adjustment_to_search_mode(glo_IFB_casted);
       }
-      else if ( check_adjustment_to_frozen_switch_condition(glo_IFB) ) {
+      else if ( check_adjustment_to_frozen_switch_condition(glo_IFB_casted) ) {
 
-        switch_adjustment_to_frozen_mode(glo_IFB);
+        switch_adjustment_to_frozen_mode(glo_IFB_casted);
       }
       break;
 
@@ -356,24 +389,24 @@ extern void glo_IFB_process(glo_IFB_t *glo_IFB, rtk_t *rtk)
   }
 
   /* produce glo_dt estimation step */
-  switch ( glo_IFB->mode ) {
+  switch ( glo_IFB_casted->mode ) {
 
     case GLO_IFB_SEARCH_MODE:
-      search_mode_step(glo_IFB, rtk);
+      search_mode_step(glo_IFB_casted, rtk);
       break;
 
     case GLO_IFB_ADJUSTMENT_MODE:
-      adjustment_mode_step(glo_IFB, rtk);
+      adjustment_mode_step(glo_IFB_casted, rtk);
       break;
 
     default: break;
   }
 
   /* check glo_IFB reset condition and reset if necessary */
-  if ( check_reset_condition(glo_IFB, rtk) ) {
+  if ( check_reset_condition(glo_IFB_casted, rtk) ) {
 
-    glo_IFB_reset(glo_IFB);
+    glo_IFB_reset(glo_IFB_casted);
   }
 
-  glo_IFB->delta_glo_dt = glo_IFB->glo_dt - glo_dt_prev;
+  glo_IFB_casted->delta_glo_dt = glo_IFB_casted->glo_dt - glo_dt_prev;
 }

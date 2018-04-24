@@ -57,14 +57,16 @@ typedef struct {
 /* -------------------------------------------------------------------------------------------------------------- */
 /* API */
 
-extern glo_IFB_t *glo_IFB_init();
-extern int glo_IFB_is_valid(const glo_IFB_t *glo_IFB);
-extern void glo_IFB_free(glo_IFB_t *glo_IFB);
-extern void glo_IFB_copy(const glo_IFB_t *glo_IFB_source, glo_IFB_t *glo_IFB_destination);
+extern void *glo_IFB_init();
+extern int   glo_IFB_is_valid(const void *glo_IFB);
+extern void  glo_IFB_free(void *glo_IFB);
+extern void  glo_IFB_copy(const void *glo_IFB_src, void *glo_IFB_dst);
 
-extern void glo_IFB_reset(glo_IFB_t *glo_IFB);
-extern int glo_IFB_is_enough_sats(const rtk_t *rtk);
-extern void glo_IFB_process(glo_IFB_t *glo_IFB, rtk_t *rtk);
+extern int    glo_IFB_is_enough_sats(const rtk_t *rtk);
+extern void   glo_IFB_process(void *glo_IFB, rtk_t *rtk);
+extern double glo_IFB_get_glo_dt(const void *glo_IFB);
+extern double glo_IFB_get_delta_glo_dt(const void *glo_IFB);
+extern void   glo_IFB_send_signal_to_reset(void *glo_IFB);
 
 /* -------------------------------------------------------------------------------------------------------------- */
 

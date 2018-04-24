@@ -888,8 +888,7 @@ static void udstate(rtk_t *rtk, const obsd_t *obs, const int *sat,
 {
     double tt=fabs(rtk->tt),bl,dr[3];
     int i, idx, sat_no;
-    glo_IFB_t *glo_IFB = (glo_IFB_t *) rtk->glo_IFB;
-    
+
     trace(3,"udstate : ns=%d\n",ns);
 
     if ( rtk->opt.glomodear == GLO_ARMODE_ON ) {
@@ -900,7 +899,7 @@ static void udstate(rtk_t *rtk, const obsd_t *obs, const int *sat,
         idx = IB(sat_no, 0, (&rtk->opt));
         if (rtk->x[idx] == 0) continue;
 
-        rtk->x[idx] -= rtk->ssat[sat_no-1].freq_num * glo_IFB->delta_glo_dt;
+        rtk->x[idx] -= rtk->ssat[sat_no-1].freq_num * glo_IFB_get_delta_glo_dt(rtk->glo_IFB);
       }
     }
 
@@ -936,7 +935,6 @@ static void zdres_sat(int base, double r, const obsd_t *obs, const nav_t *nav,
     double f1, f2, C1, C2, dant_if; 
     double P, P1, P2;
     int i, nf = NF(opt);
-    const glo_IFB_t *glo_IFB = (const glo_IFB_t *) rtk->glo_IFB;
 
     if (opt->ionoopt == IONOOPT_IFLC) { /* iono-free linear combination */
         if (lam[0] == 0.0 || lam[1] == 0.0) return;
@@ -983,7 +981,7 @@ static void zdres_sat(int base, double r, const obsd_t *obs, const nav_t *nav,
               if ( (opt->glomodear == GLO_ARMODE_ON)
                 && (rtk->ssat[sat].sys == SYS_GLO) && (base == 0) ) {
 
-                y[i] -= rtk->ssat[sat].freq_num * (glo_IFB->glo_dt) * (CLIGHT / FREQ1_GLO);
+                y[i] -= rtk->ssat[sat].freq_num * glo_IFB_get_glo_dt(rtk->glo_IFB) * (CLIGHT / FREQ1_GLO);
               }
             }
 
@@ -2240,7 +2238,7 @@ extern int rtk_is_valid(const rtk_t *rtk)
 
     if ( rtk->glo_IFB != NULL ) {
 
-      if ( !glo_IFB_is_valid((glo_IFB_t *) rtk->glo_IFB) ) {
+      if ( !glo_IFB_is_valid(rtk->glo_IFB) ) {
 
         return 0;
       }
@@ -2291,7 +2289,7 @@ extern void rtk_copy(const rtk_t *rtk_source, rtk_t *rtk_destination)
 
     if ( (rtk_source->glo_IFB != NULL) && (rtk_destination->glo_IFB != NULL) ) {
 
-      glo_IFB_copy((glo_IFB_t *) rtk_source->glo_IFB, (glo_IFB_t *) rtk_destination->glo_IFB);
+      glo_IFB_copy(rtk_source->glo_IFB, rtk_destination->glo_IFB);
     }
 }
 
@@ -2562,7 +2560,7 @@ extern void rtkfree(rtk_t *rtk)
 
     if ( rtk->glo_IFB != NULL ) {
 
-        glo_IFB_free((glo_IFB_t *) rtk->glo_IFB);
+        glo_IFB_free(rtk->glo_IFB);
         rtk->glo_IFB = NULL;
     }
 }
@@ -2659,7 +2657,7 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
 
             if ( opt->glomodear == GLO_ARMODE_ON ) {
 
-                ((glo_IFB_t *) rtk->glo_IFB)->signal_to_reset = GLO_IFB_SIGNAL_TO_RESET;
+                glo_IFB_send_signal_to_reset(rtk->glo_IFB);
             }
         }
     }
@@ -2783,7 +2781,7 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
 
     if ( rtk->opt.glomodear == GLO_ARMODE_ON ) {
 
-      glo_IFB_process((glo_IFB_t *) rtk->glo_IFB, rtk);
+      glo_IFB_process(rtk->glo_IFB, rtk);
     }
 
     return 1;
